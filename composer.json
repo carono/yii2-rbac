@@ -1,0 +1,23 @@
+{
+    "name": "carono/yii2-rbac",
+    "description": "Yii2 RBAC extension",
+    "type": "yii2-extension",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "carno",
+            "email": "spamer2000@list.ru"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "carono\\yii2rbac\\": ""
+        }
+    },
+    "extra": {
+        "bootstrap": "carono\\yii2rbac\\Bootstrap"
+    }
+}

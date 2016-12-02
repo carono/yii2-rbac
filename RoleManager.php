@@ -126,6 +126,48 @@ class RoleManager
         }
     }
 
+    public static function getModuleFromPermission($permission)
+    {
+        $arr = explode(':', $permission);
+        if (count($arr) == 4) {
+            return $arr[1];
+        } elseif (count($arr) == 3) {
+            return $arr[0];
+        } else {
+            return false;
+        }
+    }
+
+    public static function getActionFromPermission($permission)
+    {
+        $arr = explode(':', $permission);
+        if (count($arr) == 4) {
+            return $arr[3];
+        } elseif (count($arr) == 3) {
+            return $arr[2];
+        } else {
+            return false;
+        }
+    }
+
+    public static function getControllerFromPermission($permission)
+    {
+        $arr = explode(':', $permission);
+        if (count($arr) == 4) {
+            return $arr[2];
+        } elseif (count($arr) == 3) {
+            return $arr[1];
+        } else {
+            return false;
+        }
+    }
+
+    public static function getApplicationFromPermission($permission)
+    {
+        $arr = explode(':', $permission);
+        return $arr[0];
+    }
+
     /**
      * @param      $action
      *
@@ -135,7 +177,7 @@ class RoleManager
     {
         $applicationId = self::$defaultApplicationId ? self::$defaultApplicationId : \Yii::$app->id;
         $module = ArrayHelper::getValue($action->controller, 'module.id', '');
-        if ($module === $applicationId){
+        if ($module === $applicationId) {
             $module = '';
         }
         $controller = $action->controller->id;
@@ -159,12 +201,14 @@ class RoleManager
             $application = \Yii::$app->id;
         }
         return join(
-            ":", array_filter([
-                ucwords(self::formName($application)),
-                ucwords(self::formName($module)),
-                ucwords(self::formName($controller)),
-                ucwords(self::formName($action)),
-            ])
+            ":", array_filter(
+                [
+                    ucwords(self::formName($application)),
+                    ucwords(self::formName($module)),
+                    ucwords(self::formName($controller)),
+                    ucwords(self::formName($action)),
+                ]
+            )
         );
     }
 

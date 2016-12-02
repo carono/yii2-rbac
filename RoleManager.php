@@ -15,6 +15,8 @@ use yii\web\Request;
 class RoleManager
 {
     public static $userClass = 'app\models\User';
+    public static $defaultApplicationId;
+
     /**
      * @return \yii\rbac\ManagerInterface
      * @throws \Exception
@@ -34,7 +36,7 @@ class RoleManager
      * @return int|mixed|null|string
      * @throws \Exception
      */
-	private static function getUserId($user = null)
+    private static function getUserId($user = null)
     {
         $class = self::$userClass;
         $id = null;
@@ -126,25 +128,16 @@ class RoleManager
 
     /**
      * @param      $action
-     * @param bool $module
-     * @param bool $controller
-     * @param bool $name
      *
      * @return null|string
      */
-    public static function formPermissionByAction($action, $name = false, $controller = false, $module = false)
+    public static function formPermissionByAction(Action $action)
     {
-        if ($action instanceof Action) {
-            $module = $module ? '*' : ArrayHelper::getValue($action->controller, 'module.id', 'basic');
-            $controller = $controller ? '*' : $action->controller->id;
-            $name = $name ? '*' : self::formName($action->id);
-        } else {
-            $arr = explode(':', $action);
-            $module = $module ? '*' : ArrayHelper::getValue($arr, 0);
-            $controller = $controller ? '*' : ArrayHelper::getValue($arr, 1);
-            $name = $name ? '*' : ArrayHelper::getValue($arr, 2);
-        }
-        return self::formPermission($controller, $name, $module);
+        $applicationId = self::$defaultApplicationId ? self::$defaultApplicationId : \Yii::$app->id;
+        $module = ArrayHelper::getValue($action->controller, 'module.id', $applicationId);
+        $controller = $action->controller->id;
+        $name = self::formName($action->id);
+        return self::formPermission($controller, $name, $module, $applicationId);
     }
 
 
@@ -153,18 +146,22 @@ class RoleManager
      * @param        $action
      * @param string $module
      *
+     * @param null   $application
+     *
      * @return string
      */
-    public static function formPermission($controller, $action, $module = 'Basic')
+    public static function formPermission($controller, $action, $module, $application = null)
     {
+        if (!$application) {
+            $application = \Yii::$app->id;
+        }
         return join(
-            ":", array_filter(
-                [
-                    ucwords(self::formName($module)),
-                    ucwords(self::formName($controller)),
-                    ucwords(self::formName($action)),
-                ]
-            )
+            ":", [
+                ucwords(self::formName($application)),
+                ucwords(self::formName($module)),
+                ucwords(self::formName($controller)),
+                ucwords(self::formName($action)),
+            ]
         );
     }
 
@@ -188,11 +185,13 @@ class RoleManager
      * @param        $action
      * @param string $module
      *
+     * @param null   $application
+     *
      * @return bool
      */
-    public static function createSitePermission($controller, $action, $module = 'Basic')
+    public static function createSitePermission($controller, $action, $module = 'Basic', $application = null)
     {
-        $name = self::formPermission($controller, $action, $module);
+        $name = self::formPermission($controller, $action, $module, $application);
         return self::createPermission($name);
     }
 

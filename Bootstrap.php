@@ -3,7 +3,6 @@ namespace carono\yii2rbac;
 
 use yii\base\Application;
 use yii\base\BootstrapInterface;
-use yii\gii\Module;
 
 
 /**

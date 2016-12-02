@@ -17,7 +17,20 @@ class RbacController extends Controller
     public $basicId;
     public $frontendId;
     public $backendId;
+
+    protected $role;
+    protected $user;
     protected static $configs = [];
+
+    public function options($actionID)
+    {
+        return ArrayHelper::getValue(
+            [
+                'add-role'    => ['user', 'role'],
+                'revoke-role' => ['user', 'role']
+            ], $actionID, []
+        );
+    }
 
     public function init()
     {
@@ -35,6 +48,47 @@ class RbacController extends Controller
             }
         }
         parent::init();
+    }
+
+    public function manageRole($assign)
+    {
+        if (!$this->role || !$this->user) {
+            return Console::output('Run yii rbac --user=login --role=rolename');
+        }
+        if (!$user = CurrentUser::findUser($this->user)) {
+            return Console::output("User $this->user not found");
+        };
+        if (!$role = RoleManager::getRole($this->role)) {
+            return Console::output("Role $this->role not found");
+        };
+        if ($assign) {
+            if (RoleManager::haveRole($role, $user)) {
+                Console::output("User $this->user already have role $this->role");
+            } elseif (RoleManager::assign($role, $user)) {
+                Console::output("Role '$this->role' successful assigned to $this->user");
+            } else {
+                Console::output("Fail assign role $this->role to $this->user");
+            }
+        } else {
+            if (!RoleManager::haveRole($role, $user)) {
+                Console::output("User $this->user haven't role $this->role");
+            } elseif (RoleManager::revoke($role, $user)) {
+                Console::output("Role '$this->role' successful revoked from $this->user");
+            } else {
+                Console::output("Fail revoke role $this->role from $this->user");
+            }
+        }
+        Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
+    }
+
+    public function actionAddRole()
+    {
+        $this->manageRole(true);
+    }
+
+    public function actionRevokeRole()
+    {
+        $this->manageRole(false);
     }
 
     public function roles()

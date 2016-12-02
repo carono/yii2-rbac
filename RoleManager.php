@@ -75,7 +75,7 @@ class RoleManager
      * @param      $role
      * @param null $user
      *
-     * @return \yii\rbac\Assignment
+     * @return \yii\rbac\Assignment|false
      * @throws \Exception
      */
     public static function assign($role, $user = null)
@@ -84,6 +84,8 @@ class RoleManager
         if (!self::haveRole($role, $user)) {
             $id = self::getUserId($user);
             return self::auth()->assign($role, $id);
+        }else{
+            return false;
         }
     }
 
@@ -380,7 +382,7 @@ class RoleManager
     {
         $role = self::getRole($role);
         $id = self::getUserId($user);
-        if (!self::haveRole($role, $user)) {
+        if (self::haveRole($role, $user)) {
             return self::auth()->revoke($role, $id);
         } else {
             return false;

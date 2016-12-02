@@ -4,6 +4,7 @@ namespace carono\yii2rbac;
 
 
 
+use yii\base\Exception;
 use yii\base\Model;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
@@ -123,6 +124,11 @@ class CurrentUser
 	public static function findUser($user)
 	{
 	    $class = self::$className;
+        if (class_exists($class)){
+            if (!isset(class_implements($class)['yii\web\IdentityInterface'])){
+                throw new Exception("$class must be implemented from yii\\web\\IdentityInterface");
+            }
+        }
 		$model = null;
 		if (is_numeric($user)) {
 			$model = $class::findOne($user);

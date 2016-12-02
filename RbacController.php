@@ -16,6 +16,7 @@ class RbacController extends Controller
     public $basicId;
     public $frontendId;
     public $backendId;
+    protected static $configs = [];
 
     public function init()
     {
@@ -122,11 +123,13 @@ class RbacController extends Controller
             $controllers = $this->collectControllers($modules, $arr[1]);
             $actions = $this->collectActions($controllers, $arr[2]);
             $permissions = [];
-
-
             foreach ($actions as $action) {
-                RoleManager::$defaultApplicationId = self::getApplicationIdByControllerClass($action->controller);
-                $permissions[] = RoleManager::formPermissionByAction($action);
+                $appId = $this->getApplicationIdByControllerClass($action->controller);
+                if (RoleManager::$defaultApplicationId = $appId) {
+                    $permissions[] = RoleManager::formPermissionByAction($action);
+                } else {
+//                    var_dump(get_class($action->controller));
+                }
             }
             return $permissions;
         } else {
@@ -138,6 +141,7 @@ class RbacController extends Controller
     {
         $actions = [];
         foreach ($controllers as $controller) {
+            $controller = \Yii::createObject($controller['class'], [$controller['name'], $controller['module']]);
             if ($id == "*") {
                 foreach (get_class_methods($controller) as $method) {
                     if (strpos($method, 'action') === 0 && $method != "actions") {
@@ -146,6 +150,9 @@ class RbacController extends Controller
                     }
                 }
                 if (method_exists($controller, 'actions')) {
+//                    var_dump($controller);
+//                    exit;
+
                     foreach ($controller->actions() as $name => $value) {
                         $actions[] = new InlineAction($name, $controller, $value);
                     }
@@ -153,13 +160,15 @@ class RbacController extends Controller
             } elseif (method_exists($controller, $method = 'action' . $id)) {
                 $actions[] = new InlineAction($id, $controller, $method);
             }
+            unset($controller);
+            gc_collect_cycles();
         }
         return $actions;
     }
 
     public static function getBackendConfig()
     {
-        return ArrayHelper::merge(
+        return self::$configs['backend'] = ArrayHelper::merge(
             require(\Yii::getAlias('@common/config/main.php')),
             require(\Yii::getAlias('@common/config/main-local.php')),
             require(\Yii::getAlias('@backend/config/main.php')),
@@ -169,7 +178,7 @@ class RbacController extends Controller
 
     public static function getFrontendConfig()
     {
-        return ArrayHelper::merge(
+        return self::$configs['frontend'] = ArrayHelper::merge(
             require(\Yii::getAlias('@common/config/main.php')),
             require(\Yii::getAlias('@common/config/main-local.php')),
             require(\Yii::getAlias('@frontend/config/main.php')),
@@ -179,7 +188,7 @@ class RbacController extends Controller
 
     public static function getBasicConfig()
     {
-        return require(\Yii::getAlias('@app/config/web.php'));
+        return self::$configs['basic'] = require(\Yii::getAlias('@app/config/web.php'));
     }
 
     public static function isAdvanced()
@@ -190,14 +199,17 @@ class RbacController extends Controller
     public function collectControllers($modules, $id)
     {
         $controllers = [];
+        $moduleModel = null;
         foreach ($modules as $module) {
             if ($id == "*") {
                 $f = function ($v) {
                     return [str_replace('Controller', '', basename($v, '.php')) => $v];
                 };
                 if ($module) {
+                    $moduleModel = \Yii::createObject(current($module), [key($module), null]);
+                    $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
                     $names = array_map(
-                        $f, glob(\Yii::getAlias("@app/modules/{$module->id}/controllers/*Controller.php"))
+                        $f, glob(\Yii::getAlias($alias . "/*Controller.php"))
                     );
                 } else {
                     $backend = $frontend = $basic = [];
@@ -210,15 +222,15 @@ class RbacController extends Controller
                     $names = array_merge($backend, $frontend, $basic);
                 }
             } else {
+                var_dump('1111');
+                exit;
                 $names = [$id];
             }
             foreach (array_filter($names) as $elem) {
                 $name = key($elem);
                 $file = current($elem);
                 $className = self::extractClassByPath($file);
-                if (class_exists($className)) {
-                    $controllers[] = new $className($name, $module);
-                }
+                $controllers[] = ['class' => $className, 'name' => $name, 'module' => $moduleModel];
             }
         }
         return $controllers;
@@ -240,26 +252,20 @@ class RbacController extends Controller
 
     public function collectModules($id = '*')
     {
-        $f = function ($v) {
-            $name = basename($v);
-            $file = basename(current(glob($v . DIRECTORY_SEPARATOR . '*.php')), '.php');
-            if (class_exists($className = join('\\', ['app', 'modules', $name, $file]))) {
-                return new $className($name, null);
-            } else {
-                return null;
-            }
-        };
-        $dir = [\Yii::getAlias("@app"), "modules", "*"];
-        $modules = array_filter(array_map($f, glob(join(DIRECTORY_SEPARATOR, $dir))));
+        $modules = [];
         if ($id == '*') {
-            return array_merge($modules, [null]);
-        } else {
-            foreach ($modules as $module) {
-                if ($module->id == strtolower($id)) {
-                    return [$module];
-                }
+            if (self::isAdvanced()) {
+                $backend = ArrayHelper::getValue(self::$configs['backend'], 'modules');
+                $frontend = ArrayHelper::getValue(self::$configs['frontend'], 'modules');
+                $modules = array_merge($backend, $frontend);
+            } else {
+                $modules = ArrayHelper::getValue(self::$configs['basic'], 'modules');
             }
-            return [null];
         }
+        $result = [null];
+        foreach ($modules as $name => $module) {
+            $result[] = [$name => $module];
+        }
+        return $result;
     }
 }

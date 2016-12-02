@@ -123,8 +123,8 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-
-            $modules = $this->collectModules($module, $app);
+            
+            $modules = $this->collectModules($module, $app ? $app : '*');
             $controllers = $this->collectControllers($modules, $controller);
             $actions = $this->collectActions($controllers, $action);
             $permissions = [];

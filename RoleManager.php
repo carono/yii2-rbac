@@ -165,7 +165,11 @@ class RoleManager
     public static function getApplicationFromPermission($permission)
     {
         $arr = explode(':', $permission);
-        return $arr[0];
+        if (count($arr) == 4) {
+            return $arr[0];
+        } else {
+            return false;
+        }
     }
 
     /**

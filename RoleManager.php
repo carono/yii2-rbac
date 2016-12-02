@@ -134,7 +134,10 @@ class RoleManager
     public static function formPermissionByAction(Action $action)
     {
         $applicationId = self::$defaultApplicationId ? self::$defaultApplicationId : \Yii::$app->id;
-        $module = ArrayHelper::getValue($action->controller, 'module.id', $applicationId);
+        $module = ArrayHelper::getValue($action->controller, 'module.id', '');
+        if ($module === $applicationId){
+            $module = '';
+        }
         $controller = $action->controller->id;
         $name = self::formName($action->id);
         return self::formPermission($controller, $name, $module, $applicationId);
@@ -156,12 +159,12 @@ class RoleManager
             $application = \Yii::$app->id;
         }
         return join(
-            ":", [
+            ":", array_filter([
                 ucwords(self::formName($application)),
                 ucwords(self::formName($module)),
                 ucwords(self::formName($controller)),
                 ucwords(self::formName($action)),
-            ]
+            ])
         );
     }
 

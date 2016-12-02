@@ -15,7 +15,7 @@ use yii\web\Request;
 
 class RoleManager
 {
-    public static $userClass = 'app\models\User';
+    public static $identityClass;
     public static $defaultApplicationId;
 
     /**
@@ -39,7 +39,6 @@ class RoleManager
      */
     private static function getUserId($user = null)
     {
-        $class = self::$userClass;
         $id = null;
         if ($user instanceof ActiveRecord) {
             $id = $user->getPrimaryKey();
@@ -48,7 +47,8 @@ class RoleManager
         } elseif (is_null($user)) {
             $id = CurrentUser::getId();
         } elseif (is_string($user)) {
-            $id = ArrayHelper::getValue($class::findByUsername($user), 'id');
+            $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
+            return self::getUserId($class::findByUsername($user));
         }
         return $id;
     }
@@ -84,7 +84,7 @@ class RoleManager
         if (!self::haveRole($role, $user)) {
             $id = self::getUserId($user);
             return self::auth()->assign($role, $id);
-        }else{
+        } else {
             return false;
         }
     }
@@ -333,7 +333,8 @@ class RoleManager
         return str_replace(' ', '', ucwords(implode(' ', explode('-', $str))));
     }
 
-    public static function urlToPermission($url){
+    public static function urlToPermission($url)
+    {
         /* @var $controller Controller */
         $url = Url::to($url, true);
         $arr = parse_url($url);

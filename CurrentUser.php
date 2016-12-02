@@ -11,7 +11,7 @@ use yii\helpers\Html;
 
 class CurrentUser
 {
-	public static $className = 'app\models\User';
+	public static $identityClass;
 
 	/**
 	 * @param Model|string $message
@@ -123,7 +123,7 @@ class CurrentUser
 
 	public static function findUser($user)
 	{
-	    $class = self::$className;
+	    $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
         if (class_exists($class)){
             if (!isset(class_implements($class)['yii\web\IdentityInterface'])){
                 throw new Exception("$class must be implemented from yii\\web\\IdentityInterface");
@@ -169,7 +169,7 @@ class CurrentUser
 	 */
 	public static function get($asRobot = false, $robot = null)
 	{
-	    $class = self::$className;
+	    $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
 		$user = null;
 		if (isset(\Yii::$app->components["user"]) && !self::isGuest()) {
 			$user = $class::findOne(\Yii::$app->user->identity->getId());

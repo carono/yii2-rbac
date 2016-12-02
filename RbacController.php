@@ -11,7 +11,7 @@ use yii\helpers\StringHelper;
 
 class RbacController extends Controller
 {
-    public $userClass = 'app\models\User';
+    public $identityClass;
     public $roles = [];
     public $permissions = [];
     public $basicId;
@@ -32,21 +32,40 @@ class RbacController extends Controller
         );
     }
 
+    protected function getIdentityClass($config)
+    {
+        if (isset($config['components']['user']['identityClass'])) {
+            return $config['components']['user']['identityClass'];
+        } else {
+            return false;
+        }
+    }
+
     public function init()
     {
-        RoleManager::$userClass = $this->userClass;
+        $class = null;
         if (self::isAdvanced()) {
+            $b = self::getBackendConfig();
+            $f = self::getFrontendConfig();
+            if (!$this->identityClass) {
+                if (($class = $this->getIdentityClass($b)) == $this->getIdentityClass($f)) {
+                    $this->identityClass = $class;
+                }
+            }
             if (!$this->backendId) {
-                $this->backendId = ArrayHelper::getValue(self::getBackendConfig(), 'id');
+                $this->backendId = ArrayHelper::getValue($b, 'id');
             }
             if (!$this->frontendId) {
-                $this->frontendId = ArrayHelper::getValue(self::getFrontendConfig(), 'id');
+                $this->frontendId = ArrayHelper::getValue($f, 'id');
             }
         } else {
+            $b = self::getBasicConfig();
+            $class = $this->getIdentityClass($b);
             if (!$this->basicId) {
-                $this->basicId = ArrayHelper::getValue(self::getBasicConfig(), 'id');
+                $this->basicId = ArrayHelper::getValue($b, 'id');
             }
         }
+        CurrentUser::$identityClass = $class;
         parent::init();
     }
 

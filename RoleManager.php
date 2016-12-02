@@ -6,6 +6,7 @@ namespace carono\yii2rbac;
 use yii\base\Action;
 use yii\db\ActiveRecord;
 use yii\helpers\ArrayHelper;
+use yii\helpers\Inflector;
 use yii\helpers\Url;
 use yii\rbac\Permission;
 use yii\rbac\Role;
@@ -188,7 +189,7 @@ class RoleManager
             $module = '';
         }
         $controller = $action->controller->id;
-        $name = self::formName($action->id);
+        $name = Inflector::camelize($action->id);
         return self::formPermission($controller, $name, $module, $applicationId);
     }
 
@@ -210,10 +211,10 @@ class RoleManager
         return join(
             ":", array_filter(
                 [
-                    ucwords(self::formName($application)),
-                    ucwords(self::formName($module)),
-                    ucwords(self::formName($controller)),
-                    ucwords(self::formName($action)),
+                    Inflector::camelize($application),
+                    Inflector::camelize($module),
+                    Inflector::camelize($controller),
+                    Inflector::camelize($action),
                 ]
             )
         );
@@ -326,11 +327,6 @@ class RoleManager
             return false;
         }
         return self::auth()->hasChild($roleModel, $permissionModel);
-    }
-
-    public static function formName($str)
-    {
-        return str_replace(' ', '', ucwords(implode(' ', explode('-', $str))));
     }
 
     public static function urlToPermission($url)

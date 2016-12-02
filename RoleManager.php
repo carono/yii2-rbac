@@ -9,6 +9,7 @@ use yii\helpers\ArrayHelper;
 use yii\helpers\Url;
 use yii\rbac\Permission;
 use yii\rbac\Role;
+use yii\web\Controller;
 use yii\web\Request;
 
 
@@ -330,21 +331,23 @@ class RoleManager
         return str_replace(' ', '', ucwords(implode(' ', explode('-', $str))));
     }
 
-    public static function checkAccessByUrl($url, $user = null)
-    {
+    public static function urlToPermission($url){
+        /* @var $controller Controller */
         $url = Url::to($url, true);
         $arr = parse_url($url);
         $req = new Request();
         $req->url = $arr["path"];
         $url = \Yii::$app->urlManager->parseRequest($req);
-        $arr = explode('/', $url[0]);
-        if (count($arr) == 2) {
-            array_unshift($arr, 'Basic');
-        } elseif (count($arr) == 1) {
-            array_push($arr, 'Default');
-            array_push($arr, 'Index');
-        }
-        return self::checkAccess(self::formPermission($arr[1], $arr[2], $arr[0]), $user);
+        $route = $url[0];
+        $parts = \Yii::$app->createController($route);
+        list($controller, $actionID) = $parts;
+        return self::formPermissionByAction($controller->createAction($actionID));
+    }
+
+    public static function checkAccessByUrl($url, $user = null)
+    {
+        $permission = self::urlToPermission($url);
+        return self::checkAccess($permission, $user);
     }
 
     /**

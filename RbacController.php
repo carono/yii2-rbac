@@ -91,7 +91,7 @@ class RbacController extends Controller
                 RoleManager::createPermission($name);
                 foreach ($roles1 as $role) {
                     RoleManager::addChild($role, $name);
-                    echo "Set $name for $role\n";
+                    Console::output("Set '$name' for '$role'");
                 }
             }
         }
@@ -123,7 +123,7 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-            
+
             $modules = $this->collectModules($module, $app ? $app : '*');
             $controllers = $this->collectControllers($modules, $controller);
             $actions = $this->collectActions($controllers, $action);
@@ -132,8 +132,6 @@ class RbacController extends Controller
                 $appId = $this->getApplicationIdByControllerClass($action->controller);
                 if (RoleManager::$defaultApplicationId = $appId) {
                     $permissions[] = RoleManager::formPermissionByAction($action);
-                } else {
-//                    var_dump(get_class($action->controller));
                 }
             }
             return $permissions;

@@ -10,15 +10,15 @@ action в конкретном контроллере, а указать '*' и 
 
 УСТАНОВКА
 ---------
-```composer require carono/yii2-rbac```
+`composer require carono/yii2-rbac`
 
 Не забудьте провести миграцию для таблиц
  
-```yii migrate --migrationPath=@yii/rbac/migrations```
+`yii migrate --migrationPath=@yii/rbac/migrations`
 
 НАСТРОЙКА
 ---------
-В ```config/console.php``` для basic редакции и в ```console/main.php``` для advanced, прописываем
+В `config/console.php` для basic редакции и в `console/main.php` для advanced, прописываем
 ```
 'components' => [ 
        'authManager' => [ 
@@ -31,6 +31,7 @@ action в конкретном контроллере, а указать '*' и 
         'rbac' => [
             'class'       => 'carono\yii2rbac\RbacController',
             'roles'       => [
+                'guest'    => null,
                 'user'     => null,
                 'manager'  => 'user',
                 'director' => 'manager', // Наследование директора от менеджера
@@ -53,7 +54,7 @@ action в конкретном контроллере, а указать '*' и 
 Если настройки в конфиге изменились, то необходимо каждый раз вызывать команду. Все роли и доступы пересоздаются заново.
 При этом, уже навешанные на пользователей роли не удаляются.
 
-В базе создаются доступы вида Module:Controller:Action, если в настройках указывается '*' в любой части, то собираются
+В базе создаются доступы вида `Module:Controller:Action`, если в настройках указывается '*' в любой части, то собираются
 все модули, контроллеры или акшены. 
 
 
@@ -61,8 +62,8 @@ action в конкретном контроллере, а указать '*' и 
 -----------
 
 Все контроллеры без модулей, всё же имеют модуль, которым является Yii::$app, поэтому SiteController->actionIndex формирует
-доступ как Basic:Site:Index, если в конфиге (web.php) изменить id вашего приложения с basic на my-app, то нужно и в настройках
-контроллера указывать соответственно:  MyApp:Site:Index
+доступ как `Basic:Site:Index`, если в конфиге (web.php) изменить id вашего приложения с basic на my-app, то нужно и в настройках
+контроллера указывать соответственно:  `MyApp:Site:Index`
 
 КАК ПРИМЕНЯТЬ
 -------------
@@ -114,6 +115,7 @@ $user - класс прописанный у вас в конфигах - Yii::$
         'rbac' => [
             'class'       => 'carono\yii2rbac\RbacController',
             'roles'       => [
+                'guest'    => null,
                 'user'     => null,
                 'manager'  => 'user',
                 'director' => 'manager',
@@ -121,10 +123,10 @@ $user - класс прописанный у вас в конфигах - Yii::$
             ],
             'permissions' => [
                 '*:*:*'                 => ['root'], // Для рута доступны все контроллеры как во frontend так и в backend
-                'AppFrontend:Site:*'    => ['guest'], // Для гостя разрешены все actions у SiteController
+                'AppFrontend:Site:*'    => ['guest'], // Для гостя разрешены все actions у SiteController во frontend
                 'AppBackend:Director:*' => ['director'],
                 'AppFrontend:Ajax:*:*'  => ['user'] // Модуль Ajax, все контроллеры разрешаем во frontend
-                '*:Site:Index'          => ['guest'] // Разрешаем SiteController->index как во frontend так и backed
+                '*:Site:Index'          => ['guest'] // Разрешаем SiteController->index как во frontend так и backend
             ]
         ],
     ]

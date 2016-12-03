@@ -18,7 +18,7 @@ action в конкретном контроллере, а указать '*' и 
 
 НАСТРОЙКА
 ---------
-В ```config/console.php``` для basic редакции и в ```console/main.php``` для advanced, прописывам
+В ```config/console.php``` для basic редакции и в ```console/main.php``` для advanced, прописываем
 ```
 'components' => [ 
        'authManager' => [ 
@@ -38,10 +38,10 @@ action в конкретном контроллере, а указать '*' и 
             ],
             'permissions' => [
                 '*:*:*'                => ['root'], // Для рута доступны все контроллеры
-                'Basic:Site:*'         => ['guest'], // Для гостя резрешены все actions у SiteController
+                'Basic:Site:*'         => ['guest'], // Для гостя разрешены все actions у SiteController
                 'Basic:Director:*'     => ['director'],
                 'updater_perm'         => ['dirctor'], // Простые доступы тоже можно создавать как обычно
-                'Basic:Manager:*'      => ['manager'], // Будет достуно и директору, т.к. наследуется
+                'Basic:Manager:*'      => ['manager'], // Будет доступно и директору, т.к. наследуется
                 'Basic:Director:Index' => ['manager'], // Только один action у DirectorController
                 'Ajax:*:*'             => ['user'] // Модуль Ajax, все контроллеры разрешаем авторизованным
             ]
@@ -50,7 +50,7 @@ action в конкретном контроллере, а указать '*' и 
 ```
 
 После настройки, необходимо выполнить `yii rbac` чтобы создались роли и создались доступы по контроллерам.
-Если настройки в конфиге изменились, то необходимо каждый раз вызывать команду. Все роли и доступы пересоздаются заного.
+Если настройки в конфиге изменились, то необходимо каждый раз вызывать команду. Все роли и доступы пересоздаются заново.
 При этом, уже навешанные на пользователей роли не удаляются.
 
 В базе создаются доступы вида Module:Controller:Action, если в настройках указывается '*' в любой части, то собираются
@@ -66,7 +66,7 @@ action в конкретном контроллере, а указать '*' и 
 
 КАК ПРИМЕНЯТЬ
 -------------
-В behaviors контроллера, можно использовать фильтр, который идет в комплеке
+В behaviors контроллера, можно использовать фильтр, который идет в комплекте
 ```
   public function behaviors()
 	{
@@ -77,7 +77,7 @@ action в конкретном контроллере, а указать '*' и 
 		];
 	}
 ```
-или проверть самостоятельно
+или проверить самостоятельно
 ```
 public function behaviors()
 	{
@@ -99,11 +99,11 @@ public function behaviors()
 
 ХЕЛПЕРЫ
 -------
-RoleManager::formPermissionByAction(Yii::$app->controller->action) = Basic:Site:index
-RoleManager::checkAccessByUrl('/site/index?page=1', $user) = true, передаем ссылки или массив, как для Url::to
-RoleManager::checkAccess('Basic:Site:Index', $user), так же принимает и класс Action 
+* RoleManager::formPermissionByAction(Yii::$app->controller->action) = Basic:Site:index
+* RoleManager::checkAccessByUrl('/site/index?page=1', $user) = true, передаем ссылки или массив, как для Url::to
+* RoleManager::checkAccess('Basic:Site:Index', $user), так же принимает и класс Action 
 
-$user - класс прописаный у вас в конфигах - Yii::$app->user->identityClass
+$user - класс прописанный у вас в конфигах - Yii::$app->user->identityClass, так же может быть primaryKey модели или username
 
 РАБОТА С ADVANCED РЕДАКЦИЕЙ
 ---------------------------
@@ -121,7 +121,7 @@ $user - класс прописаный у вас в конфигах - Yii::$ap
             ],
             'permissions' => [
                 '*:*:*'                 => ['root'], // Для рута доступны все контроллеры как во frontend так и в backend
-                'AppFrontend:Site:*'    => ['guest'], // Для гостя резрешены все actions у SiteController
+                'AppFrontend:Site:*'    => ['guest'], // Для гостя разрешены все actions у SiteController
                 'AppBackend:Director:*' => ['director'],
                 'AppFrontend:Ajax:*:*'  => ['user'] // Модуль Ajax, все контроллеры разрешаем во frontend
                 '*:Site:Index'          => ['guest'] // Разрешаем SiteController->index как во frontend так и backed
@@ -132,8 +132,7 @@ $user - класс прописаный у вас в конфигах - Yii::$ap
 
 ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 ------------------
-Команда yii rbac пока не умеет сбрасывать кэш, если он указан в authManager->cache
-Команда при сборе модулей и контроллеров создаёт их как объекты, поэтому может возникать ошибка, что класс уже используется
-```Cannot use yii\web\Controller because the name is already in use``` или любой другой класс, т.к. выгрузить загруженных класс нельзя
-без долнительных средств, придется добавлять в секцию с поключаемыми неймспейсами алиас use yii\web\Controller as MyController и т.д.
-обходного пути я пока не нашел.
+* Команда yii rbac пока не умеет сбрасывать кэш, если он указан в authManager->cache
+* Команда при сборе модулей и контроллеров создаёт их как объекты, поэтому может возникать ошибка, что класс уже используется
+`Cannot use yii\web\Controller because the name is already in use` или любой другой класс, т.к. выгрузить загруженных класс нельзя
+без дополнительных средств, придется добавлять в секцию с подключаемыми неймспейсами алиас `use yii\web\Controller as MyController` и т.д. обходного пути я пока не нашел.

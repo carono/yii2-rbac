@@ -26,8 +26,8 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'add-role'    => ['user', 'role'],
-                'revoke-role' => ['user', 'role']
+                'role-add'    => ['user', 'role'],
+                'role-revoke' => ['user', 'role']
             ], $actionID, []
         );
     }
@@ -100,12 +100,12 @@ class RbacController extends Controller
         Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
     }
 
-    public function actionAddRole()
+    public function actionRoleAdd()
     {
         $this->manageRole(true);
     }
 
-    public function actionRevokeRole()
+    public function actionRoleRevoke()
     {
         $this->manageRole(false);
     }

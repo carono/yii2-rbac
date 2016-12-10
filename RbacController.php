@@ -196,16 +196,23 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-
-            $modules = $this->collectModules($module, $app ? $app : '*');
+            if (!$app && !self::isAdvanced()) {
+                $app = Inflector::camelize($this->basicId);
+                if ($app === $module){
+                    $app = '^';
+                }
+            } elseif ($app != Inflector::camelize($this->basicId)) {
+                throw new \Exception(
+                    'Application name is required for "advanced" yii version, set permission like "AppBackend:Module:Controller:Action"'
+                );
+            }
+            $modules = $this->collectModules($module, $app);
             $controllers = $this->collectControllers($modules, $controller);
             $actions = $this->collectActions($controllers, $action);
             $permissions = [];
             foreach ($actions as $action) {
-                $appId = $this->getApplicationIdByControllerClass($action->controller);
-                if (RoleManager::$defaultApplicationId = $appId) {
-                    $permissions[] = RoleManager::formPermissionByAction($action);
-                }
+                RoleManager::$defaultApplicationId = $this->getApplicationIdByControllerClass($action->controller);
+                $permissions[] = RoleManager::formPermissionByAction($action);
             }
             return $permissions;
         } else {
@@ -340,7 +347,7 @@ class RbacController extends Controller
                 }
             }
         }
-        $result = [null];
+        $result = $application == '^' ? [null] : [];
         foreach ($modules as $name => $module) {
             if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {
                 $result[] = [$name => $module];

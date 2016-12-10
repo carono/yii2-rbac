@@ -189,6 +189,12 @@ class RbacController extends Controller
         return $id;
     }
 
+    public static function isRegular($expressionPermission)
+    {
+        return !RoleManager::getApplicationFromPermission($expressionPermission);
+    }
+
+
     public function normalizePermission($expressionPermission)
     {
         if (strpos($expressionPermission, '*') !== false) {
@@ -196,19 +202,19 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-            if (!$app && !self::isAdvanced()) {
-                $app = Inflector::camelize($this->basicId);
-                if ($app === $module){
-                    $app = '^';
-                }
-            } elseif ($app != Inflector::camelize($this->basicId)) {
-                throw new \Exception(
-                    'Application name is required for "advanced" yii version, set permission like "AppBackend:Module:Controller:Action"'
-                );
-            }
             $modules = $this->collectModules($module, $app);
-            $controllers = $this->collectControllers($modules, $controller);
+            $controllers = [];
+            if (self::isRegular($expressionPermission)) {
+                $controllers = $this->collectControllers($controller, null, $module);
+            } else {
+                foreach ($modules as $elem) {
+                    $controllers = array_merge($controllers, $this->collectControllers($controller, $elem, $app));
+                }
+            }
+
+
             $actions = $this->collectActions($controllers, $action);
+
             $permissions = [];
             foreach ($actions as $action) {
                 RoleManager::$defaultApplicationId = $this->getApplicationIdByControllerClass($action->controller);
@@ -269,12 +275,17 @@ class RbacController extends Controller
         return self::$configs['basic'] = require(\Yii::getAlias('@app/config/web.php'));
     }
 
+    public static function isBasic()
+    {
+        return !self::isAdvanced();
+    }
+
     public static function isAdvanced()
     {
         return key_exists('@backend', \Yii::$aliases);
     }
 
-    public function collectControllers($modules, $id)
+    public function collectControllers($id, $module = null, $appId = null)
     {
         $f = function ($v) {
             return [str_replace('Controller', '', basename($v, '.php')) => $v];
@@ -284,31 +295,33 @@ class RbacController extends Controller
         };
         $controllers = [];
         $moduleModel = null;
-        foreach ($modules as $module) {
-            if ($module) {
-                $moduleModel = \Yii::createObject(current($module), [key($module), null]);
-                $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
-                $names = array_map(
-                    $f, glob(\Yii::getAlias($alias . "/*Controller.php"))
-                );
-            } else {
-                $backend = $frontend = $basic = [];
-                if (self::isAdvanced()) {
+        if ($module) {
+            $moduleModel = \Yii::createObject(current($module), [key($module), null]);
+            $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
+            $names = array_map(
+                $f, glob(\Yii::getAlias($alias . "/*Controller.php"))
+            );
+        } else {
+            $backend = $frontend = $basic = [];
+            if (self::isAdvanced()) {
+                if ($appId == Inflector::camelize($this->backendId)) {
                     $backend = array_map($f, glob(\Yii::getAlias('@backend/controllers/*Controller.php')));
+                }
+                if ($appId == Inflector::camelize($this->frontendId)) {
                     $frontend = array_map($f, glob(\Yii::getAlias('@frontend/controllers/*Controller.php')));
-                } else {
-                    $basic = array_map($f, glob(\Yii::getAlias('@app/controllers/*Controller.php')));
                 }
-                $names = array_merge($backend, $frontend, $basic);
+            } else {
+                $basic = array_map($f, glob(\Yii::getAlias('@app/controllers/*Controller.php')));
             }
-            foreach (array_filter($names, $f2) as $elem) {
-                $name = key($elem);
-                $file = current($elem);
-                $className = self::extractClassByPath($file);
-                $flag = $moduleModel ? StringHelper::startsWith($className, $moduleModel->controllerNamespace) : true;
-                if (($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) && $flag) {
-                    $controllers[] = ['class' => $className, 'name' => $name, 'module' => $moduleModel];
-                }
+            $names = array_merge($backend, $frontend, $basic);
+        }
+        foreach (array_filter($names, $f2) as $elem) {
+            $name = key($elem);
+            $file = current($elem);
+            $className = self::extractClassByPath($file);
+            $flag = $moduleModel ? StringHelper::startsWith($className, $moduleModel->controllerNamespace) : true;
+            if (($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) && $flag) {
+                $controllers[] = ['class' => $className, 'name' => $name, 'module' => $moduleModel];
             }
         }
         return $controllers;
@@ -347,7 +360,8 @@ class RbacController extends Controller
                 }
             }
         }
-        $result = $application == '^' ? [null] : [];
+
+        $result = [];
         foreach ($modules as $name => $module) {
             if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {
                 $result[] = [$name => $module];

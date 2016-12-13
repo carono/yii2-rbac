@@ -189,9 +189,20 @@ class RbacController extends Controller
         return $id;
     }
 
-    public static function isRegular($expressionPermission)
+    public function isRegular($expressionPermission)
     {
-        return !RoleManager::getApplicationFromPermission($expressionPermission);
+        if (self::isBasic()) {
+            $appIds = [$this->basicId];
+        } else {
+            $appIds = [$this->backendId, $this->frontendId];
+        }
+        $appIds = array_map('yii\helpers\Inflector::camelize', $appIds);
+        $appIds[] = '*';
+        if (!RoleManager::getApplicationFromPermission($expressionPermission)) {
+            return in_array(RoleManager::getModuleFromPermission($expressionPermission), $appIds);
+        }else{
+            return false;
+        }
     }
 
 
@@ -202,16 +213,18 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-            $modules = $this->collectModules($module, $app);
-            $controllers = [];
-            if (self::isRegular($expressionPermission)) {
-                $controllers = $this->collectControllers($controller, null, $module);
-            } else {
-                foreach ($modules as $elem) {
-                    $controllers = array_merge($controllers, $this->collectControllers($controller, $elem, $app));
-                }
+            if (!$app && self::isBasic()) {
+                $app = $this->basicId;
             }
+            $modules = $this->collectModules($module, $app);
 
+            $controllers = [];
+            if ($this->isRegular($expressionPermission)) {
+                $controllers = $this->collectControllers($controller, null, $module);
+            }
+            foreach ($modules as $elem) {
+                $controllers = array_merge($controllers, $this->collectControllers($controller, $elem, $app));
+            }
 
             $actions = $this->collectActions($controllers, $action);
 
@@ -354,13 +367,12 @@ class RbacController extends Controller
             }
         } else {
             foreach (self::$configs as $config) {
-                if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == $application) {
+                if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($application)) {
                     $modules = ArrayHelper::getValue($config, 'modules', []);
                     break;
                 }
             }
         }
-
         $result = [];
         foreach ($modules as $name => $module) {
             if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {

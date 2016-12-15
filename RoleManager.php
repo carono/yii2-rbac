@@ -340,7 +340,11 @@ class RoleManager
         $route = $url[0];
         $parts = \Yii::$app->createController($route);
         list($controller, $actionID) = $parts;
-        return self::formPermissionByAction($controller->createAction($actionID));
+        if ($action = $controller->createAction($actionID)){
+            return self::formPermissionByAction($action);
+        }else{
+            return false;
+        }
     }
 
     public static function checkAccessByUrl($url, $user = null)

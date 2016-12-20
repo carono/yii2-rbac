@@ -200,7 +200,7 @@ class RbacController extends Controller
         $appIds[] = '*';
         if (!RoleManager::getApplicationFromPermission($expressionPermission)) {
             return in_array(RoleManager::getModuleFromPermission($expressionPermission), $appIds);
-        }else{
+        } else {
             return false;
         }
     }
@@ -213,18 +213,30 @@ class RbacController extends Controller
             $module = RoleManager::getModuleFromPermission($expressionPermission);
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
-            if (!$app && self::isBasic()) {
-                $app = $this->basicId;
-            }
-            $modules = $this->collectModules($module, $app);
 
-            $controllers = [];
-            if ($this->isRegular($expressionPermission)) {
-                $controllers = $this->collectControllers($controller, null, $module);
+            if (!$app && self::isAdvanced() && self::isRegular($expressionPermission)) {
+                $app = $module;
+                $module = null;
+            } elseif (!$app && self::isBasic()) {
+                $app = Inflector::camelize($this->basicId);
             }
-            foreach ($modules as $elem) {
-                $controllers = array_merge($controllers, $this->collectControllers($controller, $elem, $app));
+            $applications = $this->collectApplications($app);
+            if (!$applications) {
+                Console::output('Applications not found in expression: ' . $app);
+                exit;
             }
+            $modules = $this->collectModules($module, $applications);
+            if (self::isRegular($expressionPermission)) {
+                $controllers = $this->collectRegularControllers($controller, $applications);
+            } else {
+                $controllers = [];
+            }
+            foreach ($modules as $moduleConfig) {
+                $controllers = array_merge(
+                    $controllers, $this->collectControllers($controller, $moduleConfig, $applications)
+                );
+            }
+
 
             $actions = $this->collectActions($controllers, $action);
 
@@ -298,7 +310,7 @@ class RbacController extends Controller
         return key_exists('@backend', \Yii::$aliases);
     }
 
-    public function collectControllers($id, $module = null, $appId = null)
+    public function collectRegularControllers($id, $applications = [])
     {
         $f = function ($v) {
             return [str_replace('Controller', '', basename($v, '.php')) => $v];
@@ -307,28 +319,40 @@ class RbacController extends Controller
             return key($v);
         };
         $controllers = [];
-        $moduleModel = null;
-        if ($module) {
-            $moduleModel = \Yii::createObject(current($module), [key($module), null]);
-            $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
-            $names = array_map(
-                $f, glob(\Yii::getAlias($alias . "/*Controller.php"))
-            );
-        } else {
-            $backend = $frontend = $basic = [];
-            if (self::isAdvanced()) {
-                if ($appId == Inflector::camelize($this->backendId)) {
-                    $backend = array_map($f, glob(\Yii::getAlias('@backend/controllers/*Controller.php')));
+        foreach (self::$configs as $config) {
+            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), $applications)) {
+                $p = str_replace('\\', '/', ArrayHelper::getValue($config, 'controllerNamespace', 'app\controllers'));
+                $names = array_filter(array_map($f, glob(\Yii::getAlias("@{$p}/*Controller.php"))), $f2);
+                foreach ($names as $elem) {
+                    $name = key($elem);
+                    $file = current($elem);
+                    $className = self::extractClassByPath($file);
+                    if (($id == '*' || Inflector::camelize($name) == Inflector::camelize($id))) {
+                        $controllers[] = ['class' => $className, 'name' => $name, 'module' => null];
+                    }
                 }
-                if ($appId == Inflector::camelize($this->frontendId)) {
-                    $frontend = array_map($f, glob(\Yii::getAlias('@frontend/controllers/*Controller.php')));
-                }
-            } else {
-                $basic = array_map($f, glob(\Yii::getAlias('@app/controllers/*Controller.php')));
             }
-            $names = array_merge($backend, $frontend, $basic);
         }
-        foreach (array_filter($names, $f2) as $elem) {
+        return $controllers;
+    }
+
+    public function collectControllers($id, $moduleConfig, $applications)
+    {
+        $f = function ($v) {
+            return [str_replace('Controller', '', basename($v, '.php')) => $v];
+        };
+        $f2 = function ($v) {
+            return key($v);
+        };
+        $controllers = [];
+        $app = ArrayHelper::remove($moduleConfig[key($moduleConfig)], 'app');
+        if (!in_array($app, $applications)) {
+            return [];
+        }
+        $moduleModel = \Yii::createObject(current($moduleConfig), [key($moduleConfig), null]);
+        $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
+        $names = array_filter(array_map($f, glob(\Yii::getAlias($alias . "/*Controller.php"))), $f2);
+        foreach ($names as $elem) {
             $name = key($elem);
             $file = current($elem);
             $className = self::extractClassByPath($file);
@@ -354,31 +378,50 @@ class RbacController extends Controller
         return false;
     }
 
-    public function collectModules($id = '*', $application = '*')
+    protected function extractModulesById($id)
     {
-        $modules = $backend = $frontend = [];
-        if ($application == '*') {
-            if (self::isAdvanced()) {
-                $backend = ArrayHelper::getValue(self::$configs['backend'], 'modules');
-                $frontend = ArrayHelper::getValue(self::$configs['frontend'], 'modules');
-                $modules = array_merge($backend, $frontend);
-            } else {
-                $modules = ArrayHelper::getValue(self::$configs['basic'], 'modules');
+        $modules = [];
+        foreach (self::$configs as $config) {
+            if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($id)) {
+                $modules = ArrayHelper::getValue($config, 'modules', []);
+                break;
             }
-        } else {
-            foreach (self::$configs as $config) {
-                if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($application)) {
-                    $modules = ArrayHelper::getValue($config, 'modules', []);
-                    break;
+        }
+        return $modules;
+    }
+
+    public function collectModules($id = '*', $applications = [])
+    {
+        $items = [];
+        foreach ($applications as $app) {
+            $items[$app] = array_merge($this->extractModulesById($app));
+        }
+        $result = [];
+        foreach ($items as $app => $modules) {
+            if (!in_array(Inflector::camelize($app), $applications)) {
+                continue;
+            }
+            foreach ($modules as $name => $item) {
+                if (is_string($item)) {
+                    $item = ['class' => $item];
+                }
+                if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {
+                    $result[] = [$name => $item + ['app' => $app]];
                 }
             }
         }
-        $result = [];
-        foreach ($modules as $name => $module) {
-            if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {
-                $result[] = [$name => $module];
-            }
-        }
         return $result;
+    }
+
+    public function collectApplications($id = '*')
+    {
+        $result = [];
+        if (self::isBasic()) {
+            $result[] = Inflector::camelize($this->basicId);
+        } else {
+            $result[] = Inflector::camelize($this->backendId);
+            $result[] = Inflector::camelize($this->frontendId);
+        }
+        return $id == '*' ? $result : array_intersect([Inflector::camelize($id)], $result);
     }
 }

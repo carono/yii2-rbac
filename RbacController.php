@@ -17,6 +17,7 @@ class RbacController extends Controller
     public $basicId;
     public $frontendId;
     public $backendId;
+    public $deny = [];
 
     protected $role;
     protected $user;
@@ -26,7 +27,7 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'role-add'    => ['user', 'role'],
+                'role-add' => ['user', 'role'],
                 'role-revoke' => ['user', 'role']
             ], $actionID, []
         );
@@ -168,6 +169,14 @@ class RbacController extends Controller
                 }
             }
         }
+        Console::output("");
+        foreach ($this->deny as $permission => $roles3) {
+            foreach ($roles3 as $role) {
+                RoleManager::auth()->removeChild(RoleManager::getRole($role), RoleManager::getPermission($permission));
+                Console::output("Remove '$permission' for '$role'");
+            }
+        }
+
         $diffRoles = array_diff(array_keys(RoleManager::auth()->getRoles()), array_keys($roles));
         foreach ($diffRoles as $role) {
             RoleManager::removeRole($role);

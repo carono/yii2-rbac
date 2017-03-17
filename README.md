@@ -70,32 +70,32 @@ action в конкретном контроллере, а указать '*' и 
 В behaviors контроллера, можно использовать фильтр, который идет в комплекте
 ```
   public function behaviors()
-	{
-		return [
-			'access' => [
+    {
+        return [
+            'access' => [
                 'class' => RoleManagerFilter::className(),
             ]
-		];
-	}
+        ];
+    }
 ```
 или проверить самостоятельно
 ```
 public function behaviors()
-	{
-		return [
-			'access' => [
-				'class' => AccessControl::className(),
-				'rules' => [
-					[
-						'allow'         => true,
-						'matchCallback' => function ($rule, $action) {
-							return RoleManager::checkAccess($action);
-						}
-					],
-				],
-			],
-		];
-	}
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::className(),
+                'rules' => [
+                    [
+                        'allow'         => true,
+                        'matchCallback' => function ($rule, $action) {
+                            return RoleManager::checkAccess($action);
+                        }
+                    ],
+                ],
+            ],
+        ];
+    }
 ```
 
 ХЕЛПЕРЫ

@@ -13,7 +13,10 @@ use yii\rbac\Role;
 use yii\web\Controller;
 use yii\web\Request;
 
-
+/**
+ * Class RoleManager
+ * @package carono\yii2rbac
+ */
 class RoleManager
 {
     public static $identityClass;
@@ -199,7 +202,7 @@ class RoleManager
      * @param        $action
      * @param string $module
      *
-     * @param null   $application
+     * @param null $application
      *
      * @return string
      */
@@ -240,7 +243,7 @@ class RoleManager
      * @param        $action
      * @param string $module
      *
-     * @param null   $application
+     * @param null $application
      *
      * @return bool
      */
@@ -340,9 +343,13 @@ class RoleManager
         $route = $url[0];
         $parts = \Yii::$app->createController($route);
         list($controller, $actionID) = $parts;
-        if ($action = $controller->createAction($actionID)){
+        if (!$controller) {
+            //TODO Need trace
+            return false;
+        }
+        if ($action = $controller->createAction($actionID)) {
             return self::formPermissionByAction($action);
-        }else{
+        } else {
             return false;
         }
     }
@@ -354,7 +361,7 @@ class RoleManager
     }
 
     /**
-     * @param      $permission
+     * @param string|Action $permission
      * @param null $user
      *
      * @return bool

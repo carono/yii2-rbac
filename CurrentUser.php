@@ -83,6 +83,7 @@ class CurrentUser
 				return Html::tag('div', $session->getFlash($key), $htmlOptions);
 			}
 		};
+		return '';
 	}
 
 	/**

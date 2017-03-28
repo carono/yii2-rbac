@@ -18,6 +18,7 @@ class RbacController extends Controller
     public $frontendId;
     public $backendId;
     public $deny = [];
+    public $cache = 'cache';
 
     protected $role;
     protected $user;
@@ -27,7 +28,7 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'role-add' => ['user', 'role'],
+                'role-add'    => ['user', 'role'],
                 'role-revoke' => ['user', 'role']
             ], $actionID, []
         );
@@ -98,6 +99,14 @@ class RbacController extends Controller
                 Console::output("Fail revoke role $this->role from $this->user");
             }
         }
+        Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
+    }
+
+    public function actionRoleShow()
+    {
+        if (!$user = CurrentUser::findUser($this->user)) {
+            return Console::output("User $this->user not found");
+        };
         Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
     }
 
@@ -182,6 +191,16 @@ class RbacController extends Controller
             RoleManager::removeRole($role);
         }
         $transaction->commit();
+        $this->flushCache();
+    }
+
+    public function flushCache()
+    {
+        try {
+            \Yii::$app->{$this->cache}->flush();
+        } catch (\Exception $e) {
+            echo "Fail clear cache: " . $e->getMessage();
+        }
     }
 
     public function getApplicationIdByControllerClass($controller)

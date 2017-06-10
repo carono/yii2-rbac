@@ -283,6 +283,10 @@ class RbacController extends Controller
     {
         $actions = [];
         foreach ($controllers as $controller) {
+            $class = new \ReflectionClass($controller['class']);
+            if ($class->isAbstract()){
+                continue;
+            }
             $controller = \Yii::createObject($controller['class'], [$controller['name'], $controller['module']]);
             if ($id == "*") {
                 foreach (get_class_methods($controller) as $method) {

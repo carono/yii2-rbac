@@ -4,10 +4,11 @@
     "type": "yii2-extension",
     "license": "MIT",
     "authors": [
-        {
-            "name": "carno",
-            "email": "spamer2000@list.ru"
-        }
+    {
+      "name": "Aleksandr Kasyanov",
+      "email": "info@carono.ru",
+      "homepage": "http://carono.ru"
+    }
     ],
     "require": {
         "yiisoft/yii2": "~2.0"

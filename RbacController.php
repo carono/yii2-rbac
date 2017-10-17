@@ -14,6 +14,7 @@ class RbacController extends Controller
     public $identityClass;
     public $roles = [];
     public $permissions = [];
+    public $permissionsByRole = [];
     public $basicId;
     public $frontendId;
     public $backendId;
@@ -28,7 +29,7 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'role-add'    => ['user', 'role'],
+                'role-add' => ['user', 'role'],
                 'role-revoke' => ['user', 'role']
             ], $actionID, []
         );
@@ -151,10 +152,10 @@ class RbacController extends Controller
     {
         $roles = array_merge($this->roles, $this->roles());
         $permissions = array_merge($this->permissions, $this->permissions());
-        if (!$roles) {
+        if (!$roles && !$this->permissionsByRole) {
             return Console::output('Roles not registered, nothing to do');
         }
-        if (!$permissions) {
+        if (!$permissions && !$this->permissionsByRole) {
             return Console::output('Permissions not registered, nothing to do');
         }
         $transaction = \Yii::$app->db->beginTransaction();
@@ -173,11 +174,30 @@ class RbacController extends Controller
             foreach ($this->normalizePermission($permission) as $name) {
                 RoleManager::createPermission($name);
                 foreach ($roles1 as $role) {
+                    if (!RoleManager::getRole($role)){
+                        Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
+                        exit;
+                    }
                     RoleManager::addChild($role, $name);
                     Console::output("Set '$name' for '$role'");
                 }
             }
         }
+
+        foreach ($this->permissionsByRole as $role => $permissions) {
+            foreach ($permissions as $permission) {
+                foreach ($this->normalizePermission($permission) as $name) {
+                    RoleManager::createPermission($name);
+                    if (!RoleManager::getRole($role)){
+                        Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
+                        exit;
+                    }
+                    RoleManager::addChild($role, $name);
+                    Console::output("Set '$name' for '$role'");
+                }
+            }
+        }
+
         Console::output("");
         foreach ($this->deny as $permission => $roles3) {
             foreach ($roles3 as $role) {
@@ -284,7 +304,7 @@ class RbacController extends Controller
         $actions = [];
         foreach ($controllers as $controller) {
             $class = new \ReflectionClass($controller['class']);
-            if ($class->isAbstract()){
+            if ($class->isAbstract()) {
                 continue;
             }
             $controller = \Yii::createObject($controller['class'], [$controller['name'], $controller['module']]);

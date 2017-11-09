@@ -15,6 +15,7 @@ use yii\web\Request;
 
 /**
  * Class RoleManager
+ *
  * @package carono\yii2rbac
  */
 class RoleManager
@@ -51,8 +52,8 @@ class RoleManager
         } elseif (is_null($user)) {
             $id = CurrentUser::getId();
         } elseif (is_string($user)) {
-            $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
-            return self::getUserId($class::findByUsername($user));
+            $class = static::$identityClass ? static::$identityClass : \Yii::$app->user->identityClass;
+            return static::getUserId($class::findByUsername($user));
         }
         return $id;
     }
@@ -66,8 +67,8 @@ class RoleManager
      */
     public static function getRoles($user = null, $namesOnly = true)
     {
-        $id = self::getUserId($user);
-        $roles = self::auth()->getRolesByUser($id);
+        $id = static::getUserId($user);
+        $roles = static::auth()->getRolesByUser($id);
         if ($namesOnly) {
             return array_keys($roles);
         } else {
@@ -84,10 +85,10 @@ class RoleManager
      */
     public static function assign($role, $user = null)
     {
-        $role = self::getRole($role);
-        if (!self::haveRole($role, $user)) {
-            $id = self::getUserId($user);
-            return self::auth()->assign($role, $id);
+        $role = static::getRole($role);
+        if (!static::haveRole($role, $user)) {
+            $id = static::getUserId($user);
+            return static::auth()->assign($role, $id);
         } else {
             return false;
         }
@@ -101,8 +102,27 @@ class RoleManager
      */
     public static function haveRole($role, $user = null)
     {
-        $role = self::getRole($role);
-        return in_array($role, self::getRoles($user, false));
+        return in_array($role, static::getRoles($user));
+    }
+
+    /**
+     * @param $roles
+     * @param null $user
+     * @return bool
+     */
+    public static function haveRoles($roles, $user = null)
+    {
+        return !array_diff($roles, static::getRoles($user));
+    }
+
+    /**
+     * @param $roles
+     * @param null $user
+     * @return array
+     */
+    public static function haveOneOfRoles($roles, $user = null)
+    {
+        return array_intersect($roles, static::getRoles($user));
     }
 
     /**
@@ -112,8 +132,8 @@ class RoleManager
      */
     public static function createRole($role)
     {
-        if (!self::getRole($role)) {
-            return self::auth()->add(self::auth()->createRole($role));
+        if (!static::getRole($role)) {
+            return static::auth()->add(static::auth()->createRole($role));
         } else {
             return false;
         }
@@ -129,7 +149,7 @@ class RoleManager
         if ($role instanceof Role) {
             return $role;
         } else {
-            return self::auth()->getRole($role);
+            return static::auth()->getRole($role);
         }
     }
 
@@ -186,14 +206,14 @@ class RoleManager
      */
     public static function formPermissionByAction(Action $action)
     {
-        $applicationId = self::$defaultApplicationId ? self::$defaultApplicationId : \Yii::$app->id;
+        $applicationId = static::$defaultApplicationId ? static::$defaultApplicationId : \Yii::$app->id;
         $module = ArrayHelper::getValue($action->controller, 'module.id', '');
         if ($module === $applicationId) {
             $module = '';
         }
         $controller = $action->controller->id;
         $name = Inflector::camelize($action->id);
-        return self::formPermission($controller, $name, $module, $applicationId);
+        return static::formPermission($controller, $name, $module, $applicationId);
     }
 
 
@@ -230,9 +250,9 @@ class RoleManager
      */
     public static function createPermission($name)
     {
-        if (!self::getPermission($name)) {
-            $permission = self::auth()->createPermission($name);
-            return self::auth()->add($permission);
+        if (!static::getPermission($name)) {
+            $permission = static::auth()->createPermission($name);
+            return static::auth()->add($permission);
         } else {
             return false;
         }
@@ -249,8 +269,8 @@ class RoleManager
      */
     public static function createSitePermission($controller, $action, $module = 'Basic', $application = null)
     {
-        $name = self::formPermission($controller, $action, $module, $application);
-        return self::createPermission($name);
+        $name = static::formPermission($controller, $action, $module, $application);
+        return static::createPermission($name);
     }
 
     /**
@@ -263,7 +283,7 @@ class RoleManager
         if ($permission instanceof Permission) {
             return $permission;
         } else {
-            return self::auth()->getPermission($permission);
+            return static::auth()->getPermission($permission);
         }
     }
 
@@ -273,10 +293,10 @@ class RoleManager
      */
     public static function addChild($role, $permission)
     {
-        $role = self::getRole($role);
-        $permission = self::getPermission($permission);
-        if (!self::hasChild($role, $permission)) {
-            self::auth()->addChild($role, $permission);
+        $role = static::getRole($role);
+        $permission = static::getPermission($permission);
+        if (!static::hasChild($role, $permission)) {
+            static::auth()->addChild($role, $permission);
         }
     }
 
@@ -286,10 +306,10 @@ class RoleManager
      */
     public static function addParent($role, $parent)
     {
-        $role = self::getRole($role);
-        $parent = self::getRole($parent);
-        if (!self::auth()->hasChild($role, $parent)) {
-            self::auth()->addChild($role, $parent);
+        $role = static::getRole($role);
+        $parent = static::getRole($parent);
+        if (!static::auth()->hasChild($role, $parent)) {
+            static::auth()->addChild($role, $parent);
         }
     }
 
@@ -321,15 +341,15 @@ class RoleManager
      */
     public static function hasChild($role, $permission)
     {
-        $roleModel = self::getRole($role);
-        $permissionModel = self::getPermission($permission);
+        $roleModel = static::getRole($role);
+        $permissionModel = static::getPermission($permission);
         if (!$roleModel) {
             return false;
         }
         if (!$permissionModel) {
             return false;
         }
-        return self::auth()->hasChild($roleModel, $permissionModel);
+        return static::auth()->hasChild($roleModel, $permissionModel);
     }
 
     public static function urlToPermission($url)
@@ -348,7 +368,7 @@ class RoleManager
             return false;
         }
         if ($action = $controller->createAction($actionID)) {
-            return self::formPermissionByAction($action);
+            return static::formPermissionByAction($action);
         } else {
             return false;
         }
@@ -356,8 +376,8 @@ class RoleManager
 
     public static function checkAccessByUrl($url, $user = null)
     {
-        $permission = self::urlToPermission($url);
-        return self::checkAccess($permission, $user);
+        $permission = static::urlToPermission($url);
+        return static::checkAccess($permission, $user);
     }
 
     /**
@@ -370,12 +390,12 @@ class RoleManager
     public static function checkAccess($permission, $user = null)
     {
         if ($permission instanceof Action) {
-            $permission = self::formPermissionByAction($permission);
+            $permission = static::formPermissionByAction($permission);
         }
         if (CurrentUser::isGuest()) {
-            return self::hasChild('guest', $permission);
+            return static::hasChild('guest', $permission);
         } else {
-            return self::auth()->checkAccess(self::getUserId($user), $permission);
+            return static::auth()->checkAccess(static::getUserId($user), $permission);
         }
     }
 
@@ -388,10 +408,10 @@ class RoleManager
      */
     public static function revoke($role, $user = null)
     {
-        $role = self::getRole($role);
-        $id = self::getUserId($user);
-        if (self::haveRole($role, $user)) {
-            return self::auth()->revoke($role, $id);
+        $role = static::getRole($role);
+        $id = static::getUserId($user);
+        if (static::haveRole($role, $user)) {
+            return static::auth()->revoke($role, $id);
         } else {
             return false;
         }
@@ -405,7 +425,7 @@ class RoleManager
      */
     public static function revokeAll($user = null)
     {
-        return self::auth()->revokeAll(self::getUserId($user));
+        return static::auth()->revokeAll(static::getUserId($user));
     }
 
     /**
@@ -413,8 +433,8 @@ class RoleManager
      */
     public static function removeRole($role)
     {
-        $role = self::getRole($role);
-        self::auth()->remove($role);
+        $role = static::getRole($role);
+        static::auth()->remove($role);
     }
 
     /**
@@ -422,7 +442,7 @@ class RoleManager
      */
     public static function removeChildren($role)
     {
-        $role = self::getRole($role);
-        self::auth()->removeChildren($role);
+        $role = static::getRole($role);
+        static::auth()->removeChildren($role);
     }
 }

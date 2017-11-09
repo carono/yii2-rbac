@@ -8,6 +8,8 @@ use yii\helpers\ArrayHelper;
 use yii\helpers\Console;
 use yii\helpers\Inflector;
 use yii\helpers\StringHelper;
+use yii\rbac\Role;
+use yii\rbac\Rule;
 
 class RbacController extends Controller
 {
@@ -20,6 +22,9 @@ class RbacController extends Controller
     public $backendId;
     public $deny = [];
     public $cache = 'cache';
+    public $rules = [];
+    public $removeUnusedRoles = true;
+    public $removeUnusedRules = true;
 
     protected $role;
     protected $user;
@@ -147,18 +152,23 @@ class RbacController extends Controller
         return [];
     }
 
-
-    public function actionIndex()
+    protected function getPermissions()
     {
-        $roles = array_merge($this->roles, $this->roles());
-        $permissions = array_merge($this->permissions, $this->permissions());
+        return array_merge($this->permissions, $this->permissions());
+    }
+
+    protected function getRoles()
+    {
+        return array_merge($this->roles, $this->roles());
+    }
+
+    protected function applyRoles()
+    {
+        $roles = $this->getRoles();
         if (!$roles && !$this->permissionsByRole) {
-            return Console::output('Roles not registered, nothing to do');
+            Console::output('Roles not registered, nothing to do');
+            exit;
         }
-        if (!$permissions && !$this->permissionsByRole) {
-            return Console::output('Permissions not registered, nothing to do');
-        }
-        $transaction = \Yii::$app->db->beginTransaction();
         foreach ($roles as $role => $parents) {
             RoleManager::createRole($role);
             RoleManager::removeChildren($role);
@@ -169,12 +179,22 @@ class RbacController extends Controller
                     }
                 }
             }
+            Console::output("Create '$role' role");
+        }
+    }
+
+    protected function applyPermissions()
+    {
+        $permissions = $this->getPermissions();
+        if (!$permissions && !$this->permissionsByRole) {
+            Console::output('Permissions not registered, nothing to do');
+            exit;
         }
         foreach ($permissions as $permission => $roles1) {
             foreach ($this->normalizePermission($permission) as $name) {
                 RoleManager::createPermission($name);
                 foreach ($roles1 as $role) {
-                    if (!RoleManager::getRole($role)){
+                    if (!RoleManager::getRole($role)) {
                         Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
                         exit;
                     }
@@ -188,7 +208,7 @@ class RbacController extends Controller
             foreach ($permissions as $permission) {
                 foreach ($this->normalizePermission($permission) as $name) {
                     RoleManager::createPermission($name);
-                    if (!RoleManager::getRole($role)){
+                    if (!RoleManager::getRole($role)) {
                         Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
                         exit;
                     }
@@ -197,21 +217,107 @@ class RbacController extends Controller
                 }
             }
         }
+    }
 
-        Console::output("");
+    protected function applyDenyPermissions()
+    {
+        if (!$this->deny) {
+            return Console::output('Deny permissions not registered, nothing to do');
+        }
         foreach ($this->deny as $permission => $roles3) {
             foreach ($roles3 as $role) {
                 RoleManager::auth()->removeChild(RoleManager::getRole($role), RoleManager::getPermission($permission));
                 Console::output("Remove '$permission' for '$role'");
             }
         }
+    }
 
+    protected function removeUnusedRoles()
+    {
+        $roles = $this->getRoles();
         $diffRoles = array_diff(array_keys(RoleManager::auth()->getRoles()), array_keys($roles));
+        if (!$diffRoles) {
+            return Console::output('There are no roles to delete');
+        }
         foreach ($diffRoles as $role) {
             RoleManager::removeRole($role);
+            Console::output("Remove '$role' role");
+        }
+    }
+
+    protected function removeUnusedRules()
+    {
+        /**
+         * @var Rule $ruleClass
+         */
+        $ruleNames = [];
+        foreach ($this->rules as $permission => $ruleClass) {
+            $ruleNames[] = (new $ruleClass())->name;
+        }
+        $diffRules = array_diff(array_keys(RoleManager::auth()->getRules()), $ruleNames);
+        if (!$diffRules) {
+            Console::output("There are no rules to delete");
+        }
+        foreach ($diffRules as $rule) {
+            RoleManager::auth()->remove(RoleManager::auth()->getRule($rule));
+            Console::output("Remove rule '$rule'");
+        }
+    }
+
+    public function actionIndex()
+    {
+        $transaction = \Yii::$app->db->beginTransaction();
+        Console::output("Creating roles");
+        $this->applyRoles();
+
+        Console::output("\nCreating permissions");
+        $this->applyPermissions();
+
+        Console::output("\nApply deny permissions");
+        $this->applyDenyPermissions();
+
+        if ($this->removeUnusedRoles) {
+            Console::output("\nRemove unused roles");
+            $this->removeUnusedRoles();
+        }
+
+        Console::output("\nApply rules");
+        $this->applyRules();
+
+        if ($this->removeUnusedRules) {
+            Console::output("\nRemove unused rules");
+            $this->removeUnusedRules();
         }
         $transaction->commit();
         $this->flushCache();
+    }
+
+
+    protected function applyRules()
+    {
+        /**
+         * @var Rule $ruleClass
+         */
+        if (!$this->rules) {
+            Console::output("There are no rules for creating");
+            return;
+        }
+        foreach ($this->rules as $permission => $ruleClassName) {
+            foreach ($this->normalizePermission($permission) as $name) {
+                $permissionModel = RoleManager::getPermission($name);
+                if (!$permissionModel) {
+                    Console::output("FAIL add rules. Permission '$name' not found");
+                    exit;
+                }
+                $ruleClass = new $ruleClassName();
+                if (!RoleManager::auth()->getRule($ruleClass->name)) {
+                    RoleManager::auth()->add($ruleClass);
+                }
+                $permissionModel->ruleName = $ruleClass->name;
+                RoleManager::auth()->update($name, $permissionModel);
+                Console::output("Set rule '{$ruleClass->name}' for '$name'");
+            }
+        }
     }
 
     public function flushCache()

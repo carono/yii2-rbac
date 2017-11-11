@@ -352,15 +352,24 @@ class RoleManager
         return static::auth()->hasChild($roleModel, $permissionModel);
     }
 
-    public static function urlToPermission($url)
+    public static function urlToRoute($url)
     {
-        /* @var $controller Controller */
         $url = Url::to($url, true);
         $arr = parse_url($url);
         $req = new Request();
-        $req->url = $arr["path"];
-        $url = \Yii::$app->urlManager->parseRequest($req);
-        $route = $url[0];
+        $req->url = $arr["path"] . ($arr['query'] ? '?' . $arr['query'] : '');
+        parse_str($arr["query"], $query);
+        $result = \Yii::$app->urlManager->parseRequest($req);
+        if (empty($result[1]) && $query) {
+            $result[1] = $query;
+        }
+        return $result;
+    }
+
+    public static function urlToPermission($url)
+    {
+        /* @var $controller Controller */
+        $route = self::urlToRoute($url)[0];
         $parts = \Yii::$app->createController($route);
         list($controller, $actionID) = $parts;
         if (!$controller) {
@@ -376,18 +385,19 @@ class RoleManager
 
     public static function checkAccessByUrl($url, $user = null)
     {
+        $arr = self::urlToRoute($url);
         $permission = static::urlToPermission($url);
-        return static::checkAccess($permission, $user);
+        return static::checkAccess($permission, $user, $arr[1]);
     }
 
     /**
      * @param string|Action $permission
      * @param null $user
      *
+     * @param array $params
      * @return bool
-     * @throws \Exception
      */
-    public static function checkAccess($permission, $user = null)
+    public static function checkAccess($permission, $user = null, $params = [])
     {
         if ($permission instanceof Action) {
             $permission = static::formPermissionByAction($permission);
@@ -395,7 +405,7 @@ class RoleManager
         if (CurrentUser::isGuest()) {
             return static::hasChild('guest', $permission);
         } else {
-            return static::auth()->checkAccess(static::getUserId($user), $permission);
+            return static::auth()->checkAccess(static::getUserId($user), $permission, $params);
         }
     }
 

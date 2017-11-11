@@ -292,7 +292,6 @@ class RbacController extends Controller
         $this->flushCache();
     }
 
-
     protected function applyRules()
     {
         /**
@@ -358,7 +357,6 @@ class RbacController extends Controller
             return false;
         }
     }
-
 
     public function normalizePermission($expressionPermission)
     {

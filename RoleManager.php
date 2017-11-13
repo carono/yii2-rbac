@@ -358,7 +358,11 @@ class RoleManager
         $arr = parse_url($url);
         $req = new Request();
         $req->url = $arr["path"] . (isset($arr['query']) ? '?' . $arr['query'] : '');
-        parse_str($arr["query"], $query);
+        if (isset($arr['query'])) {
+            parse_str($arr["query"], $query);
+        }else{
+            $query = [];
+        }
         $result = \Yii::$app->urlManager->parseRequest($req);
         if (empty($result[1]) && $query) {
             $result[1] = $query;

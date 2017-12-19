@@ -22,6 +22,7 @@ class RoleManager
 {
     public static $identityClass;
     public static $defaultApplicationId;
+    public static $authManager = 'authManager';
 
     /**
      * @return \yii\rbac\ManagerInterface
@@ -29,10 +30,10 @@ class RoleManager
      */
     public static function auth()
     {
-        if (!\Yii::$app->authManager) {
+        if (!$authManager = \Yii::$app->get(static::$authManager)) {
             throw new \Exception('Configure auth manager');
         } else {
-            return \Yii::$app->authManager;
+            return $authManager;
         }
     }
 
@@ -360,7 +361,7 @@ class RoleManager
         $req->url = $arr["path"] . (isset($arr['query']) ? '?' . $arr['query'] : '');
         if (isset($arr['query'])) {
             parse_str($arr["query"], $query);
-        }else{
+        } else {
             $query = [];
         }
         $result = \Yii::$app->urlManager->parseRequest($req);

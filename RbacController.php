@@ -18,6 +18,7 @@ class RbacController extends Controller
     public $permissions = [];
     public $permissionsByRole = [];
     public $basicId;
+    public $authManager = 'authManager';
     public $frontendId;
     public $backendId;
     public $deny = [];
@@ -74,6 +75,7 @@ class RbacController extends Controller
             }
         }
         CurrentUser::$identityClass = $class;
+        RoleManager::$authManager = $this->authManager;
         parent::init();
     }
 

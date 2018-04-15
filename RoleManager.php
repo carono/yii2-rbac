@@ -374,7 +374,7 @@ class RoleManager
     public static function urlToPermission($url)
     {
         /* @var $controller Controller */
-        $route = self::urlToRoute($url)[0];
+        $route = static::urlToRoute($url)[0];
         $parts = \Yii::$app->createController($route);
         list($controller, $actionID) = $parts;
         if (!$controller) {
@@ -390,7 +390,7 @@ class RoleManager
 
     public static function checkAccessByUrl($url, $user = null)
     {
-        $arr = self::urlToRoute($url);
+        $arr = static::urlToRoute($url);
         $permission = static::urlToPermission($url);
         return static::checkAccess($permission, $user, $arr[1]);
     }

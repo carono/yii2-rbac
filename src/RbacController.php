@@ -311,6 +311,10 @@ class RbacController extends Controller
                     exit;
                 }
                 $ruleClass = new $ruleClassName();
+				                if (empty($ruleClass->name)){
+                    Console::output("FAIL add rules. Permission '$name' not found");
+                    exit;
+                }
                 if (!RoleManager::auth()->getRule($ruleClass->name)) {
                     RoleManager::auth()->add($ruleClass);
                 }

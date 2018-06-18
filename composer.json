@@ -16,7 +16,7 @@
   },
   "autoload": {
     "psr-4": {
-      "carono\\yii2rbac\\": ""
+      "carono\\yii2rbac\\": "src"
     }
   },
   "extra": {

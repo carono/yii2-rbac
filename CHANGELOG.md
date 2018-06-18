@@ -1,0 +1,1 @@
+* \carono\yii2rbac\RoleManagerFilter добавлена возможность указать свой клас для проверки прав через $roleManagerClass

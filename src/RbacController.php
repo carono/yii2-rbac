@@ -26,6 +26,7 @@ class RbacController extends Controller
     public $rules = [];
     public $removeUnusedRoles = true;
     public $removeUnusedRules = true;
+    public $overwritePermissionParams = false;
 
     protected $role;
     protected $user;
@@ -195,7 +196,13 @@ class RbacController extends Controller
         foreach ($permissions as $permission => $roles1) {
             foreach ($this->normalizePermission($permission) as $name) {
                 RoleManager::createPermission($name);
-                foreach ($roles1 as $role) {
+                foreach ($roles1 as $key => $role) {
+                    if (is_array($role) && \in_array($key, ['data', 'description'])) {
+                        $params[$key] = $role;
+                        $permissionModel = RoleManager::getPermission($name);
+                        RoleManager::updatePermissionParams($permissionModel, $params);
+                        continue;
+                    }
                     if (!RoleManager::getRole($role)) {
                         Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
                         exit;
@@ -207,9 +214,22 @@ class RbacController extends Controller
         }
 
         foreach ($this->permissionsByRole as $role => $permissions) {
-            foreach ($permissions as $permission) {
+            foreach ($permissions as $key => $permission) {
+                $params = [];
+                if (is_array($permission) && is_string($key)) {
+                    $params = $permission;
+                    $permission = $key;
+                }
+                if ($this->overwritePermissionParams) {
+                    $params['data'] = ArrayHelper::getValue($params, 'data');
+                    $params['description'] = ArrayHelper::getValue($params, 'description');
+                }
                 foreach ($this->normalizePermission($permission) as $name) {
-                    RoleManager::createPermission($name);
+                    RoleManager::createPermission($name, $params);
+                    if ($params) {
+                        $permissionModel = RoleManager::getPermission($name);
+                        RoleManager::updatePermissionParams($permissionModel, $params);
+                    }
                     if (!RoleManager::getRole($role)) {
                         Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
                         exit;
@@ -311,7 +331,7 @@ class RbacController extends Controller
                     exit;
                 }
                 $ruleClass = new $ruleClassName();
-				                if (empty($ruleClass->name)){
+                if (empty($ruleClass->name)) {
                     Console::output("FAIL add rules. Permission '$name' not found");
                     exit;
                 }

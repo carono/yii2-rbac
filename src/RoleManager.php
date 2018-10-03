@@ -141,6 +141,36 @@ class RoleManager
     }
 
     /**
+     * @param $permission
+     * @return bool
+     */
+    public static function add($permission)
+    {
+        if (is_string($permission)) {
+            $permission = self::getPermission($permission);
+        }
+        return static::auth()->add($permission);
+    }
+
+    /**
+     * @param $permission
+     * @param array $params
+     * @return bool
+     */
+    public static function updatePermissionParams($permission, $params = [])
+    {
+        if (is_string($permission)) {
+            $permission = self::getPermission($permission);
+        }
+        foreach ($params as $param => $value) {
+            if ($permission->canSetProperty($param)) {
+                $permission->$param = $value;
+            }
+        }
+        return self::auth()->update($permission->name, $permission);
+    }
+
+    /**
      * @param $role
      *
      * @return null|Role
@@ -247,16 +277,18 @@ class RoleManager
     /**
      * @param $name
      *
+     * @param array $params
      * @return bool
      */
-    public static function createPermission($name)
+    public static function createPermission($name, $params = [])
     {
         if (!static::getPermission($name)) {
             $permission = static::auth()->createPermission($name);
+            self::updatePermissionParams($permission, $params);
             return static::auth()->add($permission);
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**

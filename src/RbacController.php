@@ -17,10 +17,7 @@ class RbacController extends Controller
     public $roles = [];
     public $permissions = [];
     public $permissionsByRole = [];
-    public $basicId;
     public $authManager = 'authManager';
-    public $frontendId;
-    public $backendId;
     public $deny = [];
     public $cache = 'cache';
     public $rules = [];
@@ -28,9 +25,26 @@ class RbacController extends Controller
     public $removeUnusedRules = true;
     public $overwritePermissionParams = false;
 
+    public $defaultConfigs = [
+        [
+            '@app/config/web.php'
+        ],
+        [
+            '@common/config/main.php',
+            '@common/config/main-local.php',
+            '@backend/config/main.php',
+            '@backend/config/main-local.php'
+        ],
+        [
+            '@common/config/main.php',
+            '@common/config/main-local.php',
+            '@frontend/config/main.php',
+            '@frontend/config/main-local.php'
+        ]
+    ];
+    public $configs = [];
     protected $role;
     protected $user;
-    protected static $configs = [];
 
     public function options($actionID)
     {
@@ -53,29 +67,6 @@ class RbacController extends Controller
 
     public function init()
     {
-        $class = null;
-        if (self::isAdvanced()) {
-            $b = self::getBackendConfig();
-            $f = self::getFrontendConfig();
-            if (!$this->identityClass) {
-                if (($class = $this->getIdentityClass($b)) == $this->getIdentityClass($f)) {
-                    $this->identityClass = $class;
-                }
-            }
-            if (!$this->backendId) {
-                $this->backendId = ArrayHelper::getValue($b, 'id');
-            }
-            if (!$this->frontendId) {
-                $this->frontendId = ArrayHelper::getValue($f, 'id');
-            }
-        } else {
-            $b = self::getBasicConfig();
-            $class = $this->getIdentityClass($b);
-            if (!$this->basicId) {
-                $this->basicId = ArrayHelper::getValue($b, 'id');
-            }
-        }
-        CurrentUser::$identityClass = $class;
         RoleManager::$authManager = $this->authManager;
         parent::init();
     }
@@ -354,36 +345,6 @@ class RbacController extends Controller
         }
     }
 
-    public function getApplicationIdByControllerClass($controller)
-    {
-        if (StringHelper::startsWith(get_class($controller), 'frontend')) {
-            $id = $this->frontendId;
-        } elseif (StringHelper::startsWith(get_class($controller), 'backend')) {
-            $id = $this->backendId;
-        } elseif (StringHelper::startsWith(get_class($controller), 'app')) {
-            $id = $this->basicId;
-        } else {
-            $id = null;
-        }
-        return $id;
-    }
-
-    public function isRegular($expressionPermission)
-    {
-        if (self::isBasic()) {
-            $appIds = [$this->basicId];
-        } else {
-            $appIds = [$this->backendId, $this->frontendId];
-        }
-        $appIds = array_map('yii\helpers\Inflector::camelize', $appIds);
-        $appIds[] = '*';
-        if (!RoleManager::getApplicationFromPermission($expressionPermission)) {
-            return in_array(RoleManager::getModuleFromPermission($expressionPermission), $appIds);
-        } else {
-            return false;
-        }
-    }
-
     public function normalizePermission($expressionPermission)
     {
         if (strpos($expressionPermission, '*') !== false) {
@@ -392,36 +353,28 @@ class RbacController extends Controller
             $controller = RoleManager::getControllerFromPermission($expressionPermission);
             $action = RoleManager::getActionFromPermission($expressionPermission);
 
-            if (!$app && self::isAdvanced() && self::isRegular($expressionPermission)) {
-                $app = $module;
-                $module = null;
-            } elseif (!$app && self::isBasic()) {
-                $app = Inflector::camelize($this->basicId);
-            }
             $applications = $this->collectApplications($app);
-            if (!$applications) {
-                Console::output('Applications not found in expression: ' . $app);
-                exit;
-            }
-            $modules = $this->collectModules($module, $applications);
-            if (self::isRegular($expressionPermission)) {
-                $controllers = $this->collectRegularControllers($controller, $applications);
-            } else {
-                $controllers = [];
-            }
-            foreach ($modules as $moduleConfig) {
-                $controllers = array_merge(
-                    $controllers, $this->collectControllers($controller, $moduleConfig, $applications)
-                );
-            }
-
-
-            $actions = $this->collectActions($controllers, $action);
 
             $permissions = [];
-            foreach ($actions as $action) {
-                RoleManager::$defaultApplicationId = $this->getApplicationIdByControllerClass($action->controller);
-                $permissions[] = RoleManager::formPermissionByAction($action);
+            if (!$applications) {
+                Console::output('ERROR: Applications not found in expression: ' . $app);
+                exit;
+            }
+
+            foreach ($applications as $application) {
+                $modules = $this->collectModules($module, $application);
+                $controllers = $this->collectRegularControllers($controller, $application);
+                foreach ($modules as $moduleConfig) {
+                    $controllers = array_merge(
+                        $controllers, $this->collectControllers($controller, $moduleConfig, $applications)
+                    );
+                }
+                $actions = $this->collectActions($controllers, $action);
+
+                foreach ($actions as $action) {
+                    RoleManager::$defaultApplicationId = $application;
+                    $permissions[] = RoleManager::formPermissionByAction($action);
+                }
             }
             return $permissions;
         } else {
@@ -457,42 +410,27 @@ class RbacController extends Controller
         return $actions;
     }
 
-    public static function getBackendConfig()
+    protected static function mergeConfigs($array)
     {
-        return self::$configs['backend'] = ArrayHelper::merge(
-            require(\Yii::getAlias('@common/config/main.php')),
-            require(\Yii::getAlias('@common/config/main-local.php')),
-            require(\Yii::getAlias('@backend/config/main.php')),
-            require(\Yii::getAlias('@backend/config/main-local.php'))
-        );
+        $result = [];
+        foreach ($array as $item) {
+            try {
+                $file = \Yii::getAlias($item);
+                if (file_exists($file)) {
+                    $result = ArrayHelper::merge($result, require $file);
+                }
+            } catch (\Exception $e) {
+            }
+        }
+        return $result;
     }
 
-    public static function getFrontendConfig()
+    protected function getConfigs()
     {
-        return self::$configs['frontend'] = ArrayHelper::merge(
-            require(\Yii::getAlias('@common/config/main.php')),
-            require(\Yii::getAlias('@common/config/main-local.php')),
-            require(\Yii::getAlias('@frontend/config/main.php')),
-            require(\Yii::getAlias('@frontend/config/main-local.php'))
-        );
+        return $this->configs ?: $this->defaultConfigs;
     }
 
-    public static function getBasicConfig()
-    {
-        return self::$configs['basic'] = require(\Yii::getAlias('@app/config/web.php'));
-    }
-
-    public static function isBasic()
-    {
-        return !self::isAdvanced();
-    }
-
-    public static function isAdvanced()
-    {
-        return key_exists('@backend', \Yii::$aliases);
-    }
-
-    public function collectRegularControllers($id, $applications = [])
+    public function collectRegularControllers($pattern, $applications = [])
     {
         $f = function ($v) {
             return [str_replace('Controller', '', basename($v, '.php')) => $v];
@@ -501,15 +439,16 @@ class RbacController extends Controller
             return key($v);
         };
         $controllers = [];
-        foreach (self::$configs as $config) {
-            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), $applications)) {
+        foreach ($this->getConfigs() as $configs) {
+            $config = static::mergeConfigs($configs);
+            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), (array)$applications)) {
                 $p = str_replace('\\', '/', ArrayHelper::getValue($config, 'controllerNamespace', 'app\controllers'));
                 $names = array_filter(array_map($f, glob(\Yii::getAlias("@{$p}/*Controller.php"))), $f2);
                 foreach ($names as $elem) {
                     $name = key($elem);
                     $file = current($elem);
                     $className = self::extractClassByPath($file);
-                    if (($id == '*' || Inflector::camelize($name) == Inflector::camelize($id))) {
+                    if (StringHelper::matchWildcard($pattern, Inflector::camelize($name))) {
                         $controllers[] = ['class' => $className, 'name' => $name, 'module' => null];
                     }
                 }
@@ -518,7 +457,7 @@ class RbacController extends Controller
         return $controllers;
     }
 
-    public function collectControllers($id, $moduleConfig, $applications)
+    public function collectControllers($pattern, $moduleConfig, $applications)
     {
         $f = function ($v) {
             return [str_replace('Controller', '', basename($v, '.php')) => $v];
@@ -539,7 +478,7 @@ class RbacController extends Controller
             $file = current($elem);
             $className = self::extractClassByPath($file);
             $flag = $moduleModel ? StringHelper::startsWith($className, $moduleModel->controllerNamespace) : true;
-            if (($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) && $flag) {
+            if (StringHelper::matchWildcard($pattern, Inflector::camelize($name)) && $flag) {
                 $controllers[] = ['class' => $className, 'name' => $name, 'module' => $moduleModel];
             }
         }
@@ -563,7 +502,7 @@ class RbacController extends Controller
     protected function extractModulesById($id)
     {
         $modules = [];
-        foreach (self::$configs as $config) {
+        foreach ($this->getConfigs() as $config) {
             if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($id)) {
                 $modules = ArrayHelper::getValue($config, 'modules', []);
                 break;
@@ -572,22 +511,22 @@ class RbacController extends Controller
         return $modules;
     }
 
-    public function collectModules($id = '*', $applications = [])
+    public function collectModules($pattern = '*', $applications = [])
     {
         $items = [];
-        foreach ($applications as $app) {
+        foreach ((array)$applications as $app) {
             $items[$app] = array_merge($this->extractModulesById($app));
         }
         $result = [];
         foreach ($items as $app => $modules) {
-            if (!in_array(Inflector::camelize($app), $applications)) {
+            if (!in_array(Inflector::camelize($app), (array)$applications)) {
                 continue;
             }
             foreach ($modules as $name => $item) {
                 if (is_string($item)) {
                     $item = ['class' => $item];
                 }
-                if ($id == '*' || Inflector::camelize($name) == Inflector::camelize($id)) {
+                if (StringHelper::matchWildcard($pattern, Inflector::camelize($name))) {
                     $result[] = [$name => $item + ['app' => $app]];
                 }
             }
@@ -595,15 +534,16 @@ class RbacController extends Controller
         return $result;
     }
 
-    public function collectApplications($id = '*')
+    public function collectApplications($pattern = '*')
     {
         $result = [];
-        if (self::isBasic()) {
-            $result[] = Inflector::camelize($this->basicId);
-        } else {
-            $result[] = Inflector::camelize($this->backendId);
-            $result[] = Inflector::camelize($this->frontendId);
+        foreach ($this->getConfigs() as $configs) {
+            if ($config = static::mergeConfigs($configs)) {
+                $result[] = Inflector::camelize(ArrayHelper::getValue($config, 'id'));
+            }
         }
-        return $id == '*' ? $result : array_intersect([Inflector::camelize($id)], $result);
+        return array_filter($result, function ($item) use ($pattern) {
+            return StringHelper::matchWildcard($pattern, $item);
+        });
     }
 }

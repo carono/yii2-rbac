@@ -189,8 +189,6 @@ class RoleManager
         $arr = explode(':', $permission);
         if (count($arr) == 4) {
             return $arr[1];
-        } elseif (count($arr) == 3) {
-            return $arr[0];
         } else {
             return false;
         }
@@ -223,7 +221,7 @@ class RoleManager
     public static function getApplicationFromPermission($permission)
     {
         $arr = explode(':', $permission);
-        if (count($arr) == 4) {
+        if (count($arr) == 4 || count($arr) == 3) {
             return $arr[0];
         } else {
             return false;

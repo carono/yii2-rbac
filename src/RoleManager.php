@@ -103,6 +103,10 @@ class RoleManager
      */
     public static function haveRole($role, $user = null)
     {
+        if ($role instanceof Role){
+            $role = $role->name;
+        }
+
         return in_array($role, static::getRoles($user));
     }
 

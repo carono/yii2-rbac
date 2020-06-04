@@ -348,28 +348,34 @@ class RbacController extends Controller
     public function normalizePermission($expressionPermission)
     {
         if (strpos($expressionPermission, '*') !== false) {
-            $app = RoleManager::getApplicationFromPermission($expressionPermission);
-            $module = RoleManager::getModuleFromPermission($expressionPermission);
-            $controller = RoleManager::getControllerFromPermission($expressionPermission);
-            $action = RoleManager::getActionFromPermission($expressionPermission);
+            $appPattern = RoleManager::getApplicationFromPermission($expressionPermission);
+            $modulePattern = RoleManager::getModuleFromPermission($expressionPermission);
+            $controllerPattern = RoleManager::getControllerFromPermission($expressionPermission);
+            $actionPattern = RoleManager::getActionFromPermission($expressionPermission);
 
-            $applications = $this->collectApplications($app);
+            $applications = $this->collectApplications($appPattern);
 
             $permissions = [];
             if (!$applications) {
-                Console::output('ERROR: Applications not found in expression: ' . $app);
+                Console::output('ERROR: Applications not found in expression: ' . $appPattern);
                 exit;
             }
 
             foreach ($applications as $application) {
-                $modules = $this->collectModules($module, $application);
-                $controllers = $this->collectRegularControllers($controller, $application);
+                $modules = $this->collectModules($modulePattern, $application);
+                $controllers = [];
+                if (!$modulePattern) {
+                    $controllers = $this->collectRegularControllers($controllerPattern, $application);
+                }
+
                 foreach ($modules as $moduleConfig) {
                     $controllers = array_merge(
-                        $controllers, $this->collectControllers($controller, $moduleConfig, $applications)
+                        $controllers, $this->collectControllers($controllerPattern, $moduleConfig, $applications)
                     );
                 }
-                $actions = $this->collectActions($controllers, $action);
+
+
+                $actions = $this->collectActions($controllers, $actionPattern);
 
                 foreach ($actions as $action) {
                     RoleManager::$defaultApplicationId = $application;
@@ -502,10 +508,12 @@ class RbacController extends Controller
     protected function extractModulesById($id)
     {
         $modules = [];
-        foreach ($this->getConfigs() as $config) {
-            if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($id)) {
-                $modules = ArrayHelper::getValue($config, 'modules', []);
-                break;
+        foreach ($this->getConfigs() as $configs) {
+            if ($config = static::mergeConfigs($configs)) {
+                if (Inflector::camelize(ArrayHelper::getValue($config, 'id')) == Inflector::camelize($id)) {
+                    $modules = ArrayHelper::getValue($config, 'modules', []);
+                    break;
+                }
             }
         }
         return $modules;

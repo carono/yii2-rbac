@@ -24,6 +24,7 @@ class RbacController extends Controller
     public $removeUnusedRoles = true;
     public $removeUnusedRules = true;
     public $overwritePermissionParams = false;
+    public $recreateRoles = true;
 
     public $defaultConfigs = [
         [
@@ -159,21 +160,23 @@ class RbacController extends Controller
     protected function applyRoles()
     {
         $roles = $this->getRoles();
-        if (!$roles && !$this->permissionsByRole) {
+        if (!$roles && !$this->permissionsByRole && $this->recreateRoles) {
             Console::output('Roles not registered, nothing to do');
             exit;
         }
         foreach ($roles as $role => $parents) {
-            RoleManager::createRole($role);
-            RoleManager::removeChildren($role);
-            if (is_array($parents)) {
-                foreach ($parents as $parent) {
-                    if (RoleManager::getRole($parent)) {
-                        RoleManager::addParent($role, $parent);
+            if ($this->recreateRoles || !RoleManager::getRole($role)) {
+                RoleManager::createRole($role);
+                RoleManager::removeChildren($role);
+                if (is_array($parents)) {
+                    foreach ($parents as $parent) {
+                        if (RoleManager::getRole($parent)) {
+                            RoleManager::addParent($role, $parent);
+                        }
                     }
                 }
+                Console::output("Create '$role' role");
             }
-            Console::output("Create '$role' role");
         }
     }
 

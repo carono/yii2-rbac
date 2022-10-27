@@ -103,7 +103,7 @@ class RoleManager
      */
     public static function haveRole($role, $user = null)
     {
-        if ($role instanceof Role){
+        if ($role instanceof Role) {
             $role = $role->name;
         }
 
@@ -408,9 +408,12 @@ class RoleManager
     public static function urlToPermission($url)
     {
         /* @var $controller Controller */
+        if (!$route = static::urlToRoute($url)) {
+            return false;
+        }
         $route = static::urlToRoute($url)[0];
         $parts = \Yii::$app->createController($route);
-        list($controller, $actionID) = $parts;
+        [$controller, $actionID] = $parts;
         if (!$controller) {
             //TODO Need trace
             return false;
@@ -424,7 +427,9 @@ class RoleManager
 
     public static function checkAccessByUrl($url, $user = null)
     {
-        $arr = static::urlToRoute($url);
+        if (!$arr = static::urlToRoute($url)) {
+            return false;
+        }
         $permission = static::urlToPermission($url);
         return static::checkAccess($permission, $user, $arr[1]);
     }

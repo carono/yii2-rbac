@@ -399,7 +399,7 @@ class RoleManager
             $query = [];
         }
         $result = \Yii::$app->urlManager->parseRequest($req);
-        if (empty($result[1]) && $query) {
+        if ($result && empty($result[1]) && $query) {
             $result[1] = $query;
         }
         return $result;

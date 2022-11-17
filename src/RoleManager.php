@@ -431,6 +431,9 @@ class RoleManager
             return false;
         }
         $permission = static::urlToPermission($url);
+        if (!$permission) {
+            return true;
+        }
         return static::checkAccess($permission, $user, $arr[1]);
     }
 

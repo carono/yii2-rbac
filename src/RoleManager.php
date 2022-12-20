@@ -391,6 +391,9 @@ class RoleManager
     {
         $url = Url::to($url, true);
         $arr = parse_url($url);
+        if (!$arr) {
+            return false;
+        }
         $req = new Request();
         $req->url = $arr["path"] . (isset($arr['query']) ? '?' . $arr['query'] : '');
         if (isset($arr['query'])) {

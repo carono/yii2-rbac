@@ -34,7 +34,7 @@ action в конкретном контроллере, а указать '*' и 
                 'guest'    => null,
                 'user'     => null,
                 'manager'  => 'user',
-                'director' => 'manager', // Наследование директора от менеджера
+                'director' => ['parent' => 'manager', 'description' => 'Директор'], // Наследование директора от менеджера
                 'root'     => null
             ],
             'permissions' => [
@@ -118,7 +118,7 @@ $user - класс прописанный у вас в конфигах - Yii::$
                 'guest'    => null,
                 'user'     => null,
                 'manager'  => 'user',
-                'director' => 'manager',
+                'director' => ['parent' => 'manager', 'description' => 'Директор'], // Наследование директора от менеджера
                 'root'     => null
             ],
             'permissions' => [

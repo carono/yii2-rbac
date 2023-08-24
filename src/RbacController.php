@@ -164,9 +164,15 @@ class RbacController extends Controller
             Console::output('Roles not registered, nothing to do');
             exit;
         }
-        foreach ($roles as $role => $parents) {
+        foreach ($roles as $role => $data) {
             if ($this->recreateRoles || !RoleManager::getRole($role)) {
-                RoleManager::createRole($role);
+                if (is_string($data)) {
+                    $data = [];
+                    $parents = (array)$data;
+                } else {
+                    $parents = (array)ArrayHelper::remove($data, 'parent');
+                }
+                RoleManager::createRole($role, $data);
                 RoleManager::removeChildren($role);
                 if (is_array($parents)) {
                     foreach ($parents as $parent) {

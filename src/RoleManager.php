@@ -135,10 +135,14 @@ class RoleManager
      *
      * @return bool
      */
-    public static function createRole($role)
+    public static function createRole($role, $attributes = [])
     {
         if (!static::getRole($role)) {
-            return static::auth()->add(static::auth()->createRole($role));
+            $model = static::auth()->createRole($role);
+            foreach ($attributes as $attribute => $value) {
+                $model->$attribute = $value;
+            }
+            return static::auth()->add($model);
         } else {
             return false;
         }
@@ -391,9 +395,6 @@ class RoleManager
     {
         $url = Url::to($url, true);
         $arr = parse_url($url);
-        if (!$arr) {
-            return false;
-        }
         $req = new Request();
         $req->url = $arr["path"] . (isset($arr['query']) ? '?' . $arr['query'] : '');
         if (isset($arr['query'])) {
@@ -402,7 +403,7 @@ class RoleManager
             $query = [];
         }
         $result = \Yii::$app->urlManager->parseRequest($req);
-        if ($result && empty($result[1]) && $query) {
+        if (empty($result[1]) && $query) {
             $result[1] = $query;
         }
         return $result;
@@ -434,9 +435,6 @@ class RoleManager
             return false;
         }
         $permission = static::urlToPermission($url);
-        if (!$permission) {
-            return true;
-        }
         return static::checkAccess($permission, $user, $arr[1]);
     }
 

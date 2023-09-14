@@ -186,6 +186,13 @@ class RbacController extends Controller
         }
     }
 
+    protected function removePermissionAssignment($permissionModel)
+    {
+        foreach (RoleManager::auth()->getRoles() as $role) {
+            RoleManager::auth()->removeChild($role, $permissionModel);
+        }
+    }
+
     protected function applyPermissions()
     {
         $permissions = $this->getPermissions();
@@ -196,10 +203,12 @@ class RbacController extends Controller
         foreach ($permissions as $permission => $roles1) {
             foreach ($this->normalizePermission($permission) as $name) {
                 RoleManager::createPermission($name);
+                $permissionModel = RoleManager::getPermission($name);
+                $this->removePermissionAssignment($permissionModel);
+
                 foreach ($roles1 as $key => $role) {
                     if (is_array($role) && \in_array($key, ['data', 'description'])) {
                         $params[$key] = $role;
-                        $permissionModel = RoleManager::getPermission($name);
                         RoleManager::updatePermissionParams($permissionModel, $params);
                         continue;
                     }
@@ -208,8 +217,8 @@ class RbacController extends Controller
                         exit;
                     }
                     RoleManager::addChild($role, $name);
-                    Console::output("Set '$name' for '$role'");
                 }
+                Console::output("Set '$name' for '" . implode(', ', $roles1) . "'");
             }
         }
 

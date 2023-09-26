@@ -132,7 +132,7 @@ class CurrentUser
         }
         $model = null;
         if (is_numeric($user)) {
-            $model = $class::findOne($user);
+            $model = $class::findIdentity($user);
         } elseif (is_string($user)) {
             $model = $class::findByUsername($user);
         } elseif ($user instanceof $class) {
@@ -175,7 +175,7 @@ class CurrentUser
         $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
         $user = null;
         if (isset(\Yii::$app->components['user']) && !self::isGuest()) {
-            $user = $class::findOne(\Yii::$app->user->identity->getId());
+            $user = $class::findIdentity(\Yii::$app->user->identity->getId());
         }
         if ($asRobot && !$user) {
             $user = self::getRobot($robot);

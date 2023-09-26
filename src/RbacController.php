@@ -8,7 +8,6 @@ use yii\helpers\ArrayHelper;
 use yii\helpers\Console;
 use yii\helpers\Inflector;
 use yii\helpers\StringHelper;
-use yii\rbac\Role;
 use yii\rbac\Rule;
 
 class RbacController extends Controller
@@ -28,20 +27,20 @@ class RbacController extends Controller
 
     public $defaultConfigs = [
         [
-            '@app/config/web.php'
+            '@app/config/web.php',
         ],
         [
             '@common/config/main.php',
             '@common/config/main-local.php',
             '@backend/config/main.php',
-            '@backend/config/main-local.php'
+            '@backend/config/main-local.php',
         ],
         [
             '@common/config/main.php',
             '@common/config/main-local.php',
             '@frontend/config/main.php',
-            '@frontend/config/main-local.php'
-        ]
+            '@frontend/config/main-local.php',
+        ],
     ];
     public $configs = [];
     protected $role;
@@ -51,9 +50,11 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'role-add' => ['user', 'role'],
-                'role-revoke' => ['user', 'role']
-            ], $actionID, []
+                'role-add'    => ['user', 'role'],
+                'role-revoke' => ['user', 'role'],
+            ],
+            $actionID,
+            []
         );
     }
 
@@ -79,10 +80,10 @@ class RbacController extends Controller
         }
         if (!$user = CurrentUser::findUser($this->user)) {
             return Console::output("User $this->user not found");
-        };
+        }
         if (!$role = RoleManager::getRole($this->role)) {
             return Console::output("Role $this->role not found");
-        };
+        }
         if ($assign) {
             if (RoleManager::haveRole($role, $user)) {
                 Console::output("User $this->user already have role $this->role");
@@ -100,15 +101,15 @@ class RbacController extends Controller
                 Console::output("Fail revoke role $this->role from $this->user");
             }
         }
-        Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
+        Console::output('Current roles: '.join('; ', RoleManager::getRoles($user)));
     }
 
     public function actionRoleShow()
     {
         if (!$user = CurrentUser::findUser($this->user)) {
             return Console::output("User $this->user not found");
-        };
-        Console::output("Current roles: " . join('; ', RoleManager::getRoles($user)));
+        }
+        Console::output('Current roles: '.join('; ', RoleManager::getRoles($user)));
     }
 
     public function actionRoleAdd()
@@ -168,9 +169,9 @@ class RbacController extends Controller
             if ($this->recreateRoles || !RoleManager::getRole($role)) {
                 if (is_string($data)) {
                     $data = [];
-                    $parents = (array)$data;
+                    $parents = (array) $data;
                 } else {
-                    $parents = (array)ArrayHelper::remove($data, 'parent');
+                    $parents = (array) ArrayHelper::remove($data, 'parent');
                 }
                 RoleManager::createRole($role, $data);
                 RoleManager::removeChildren($role);
@@ -218,7 +219,7 @@ class RbacController extends Controller
                     }
                     RoleManager::addChild($role, $name);
                 }
-                Console::output("Set '$name' for '" . implode(', ', $roles1) . "'");
+                Console::output("Set '$name' for '".implode(', ', $roles1)."'");
             }
         }
 
@@ -287,7 +288,7 @@ class RbacController extends Controller
         }
         $diffRules = array_diff(array_keys(RoleManager::auth()->getRules()), $ruleNames);
         if (!$diffRules) {
-            Console::output("There are no rules to delete");
+            Console::output('There are no rules to delete');
         }
         foreach ($diffRules as $rule) {
             RoleManager::auth()->remove(RoleManager::auth()->getRule($rule));
@@ -298,7 +299,7 @@ class RbacController extends Controller
     public function actionIndex()
     {
         $transaction = \Yii::$app->db->beginTransaction();
-        Console::output("Creating roles");
+        Console::output('Creating roles');
         $this->applyRoles();
 
         Console::output("\nCreating permissions");
@@ -329,7 +330,8 @@ class RbacController extends Controller
          * @var Rule $ruleClass
          */
         if (!$this->rules) {
-            Console::output("There are no rules for creating");
+            Console::output('There are no rules for creating');
+
             return;
         }
         foreach ($this->rules as $permission => $ruleClassName) {
@@ -359,7 +361,7 @@ class RbacController extends Controller
         try {
             \Yii::$app->{$this->cache}->flush();
         } catch (\Exception $e) {
-            echo "Fail clear cache: " . $e->getMessage();
+            echo 'Fail clear cache: '.$e->getMessage();
         }
     }
 
@@ -375,7 +377,7 @@ class RbacController extends Controller
 
             $permissions = [];
             if (!$applications) {
-                Console::output('ERROR: Applications not found in expression: ' . $appPattern);
+                Console::output('ERROR: Applications not found in expression: '.$appPattern);
                 exit;
             }
 
@@ -388,10 +390,10 @@ class RbacController extends Controller
 
                 foreach ($modules as $moduleConfig) {
                     $controllers = array_merge(
-                        $controllers, $this->collectControllers($controllerPattern, $moduleConfig, $applications)
+                        $controllers,
+                        $this->collectControllers($controllerPattern, $moduleConfig, $applications)
                     );
                 }
-
 
                 $actions = $this->collectActions($controllers, $actionPattern);
 
@@ -400,6 +402,7 @@ class RbacController extends Controller
                     $permissions[] = RoleManager::formPermissionByAction($action);
                 }
             }
+
             return $permissions;
         } else {
             return [$expressionPermission];
@@ -415,9 +418,9 @@ class RbacController extends Controller
                 continue;
             }
             $controller = \Yii::createObject($controller['class'], [$controller['name'], $controller['module']]);
-            if ($id == "*") {
+            if ($id == '*') {
                 foreach (get_class_methods($controller) as $method) {
-                    if (strpos($method, 'action') === 0 && $method != "actions") {
+                    if (strpos($method, 'action') === 0 && $method != 'actions') {
                         $name = substr($method, 6);
                         $actions[] = new InlineAction($name, $controller, $method);
                     }
@@ -427,10 +430,11 @@ class RbacController extends Controller
                         $actions[] = new InlineAction($name, $controller, $value);
                     }
                 }
-            } elseif (method_exists($controller, $method = 'action' . $id)) {
+            } elseif (method_exists($controller, $method = 'action'.$id)) {
                 $actions[] = new InlineAction($id, $controller, $method);
             }
         }
+
         return $actions;
     }
 
@@ -446,6 +450,7 @@ class RbacController extends Controller
             } catch (\Exception $e) {
             }
         }
+
         return $result;
     }
 
@@ -465,7 +470,7 @@ class RbacController extends Controller
         $controllers = [];
         foreach ($this->getConfigs() as $configs) {
             $config = static::mergeConfigs($configs);
-            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), (array)$applications)) {
+            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), (array) $applications)) {
                 $p = str_replace('\\', '/', ArrayHelper::getValue($config, 'controllerNamespace', 'app\controllers'));
                 $names = array_filter(array_map($f, glob(\Yii::getAlias("@{$p}/*Controller.php"))), $f2);
                 foreach ($names as $elem) {
@@ -478,6 +483,7 @@ class RbacController extends Controller
                 }
             }
         }
+
         return $controllers;
     }
 
@@ -495,8 +501,8 @@ class RbacController extends Controller
             return [];
         }
         $moduleModel = \Yii::createObject(current($moduleConfig), [key($moduleConfig), null]);
-        $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
-        $names = array_filter(array_map($f, glob(\Yii::getAlias($alias . "/*Controller.php"))), $f2);
+        $alias = '@'.str_replace('\\', '/', $moduleModel->controllerNamespace);
+        $names = array_filter(array_map($f, glob(\Yii::getAlias($alias.'/*Controller.php'))), $f2);
         foreach ($names as $elem) {
             $name = key($elem);
             $file = current($elem);
@@ -506,6 +512,7 @@ class RbacController extends Controller
                 $controllers[] = ['class' => $className, 'name' => $name, 'module' => $moduleModel];
             }
         }
+
         return $controllers;
     }
 
@@ -518,8 +525,10 @@ class RbacController extends Controller
             if (preg_match('/namespace\s+(.+);/i', $content, $m)) {
                 $namespace = $m[1];
             }
-            return $namespace . '\\' . $class;
+
+            return $namespace.'\\'.$class;
         }
+
         return false;
     }
 
@@ -534,18 +543,19 @@ class RbacController extends Controller
                 }
             }
         }
+
         return $modules;
     }
 
     public function collectModules($pattern = '*', $applications = [])
     {
         $items = [];
-        foreach ((array)$applications as $app) {
+        foreach ((array) $applications as $app) {
             $items[$app] = array_merge($this->extractModulesById($app));
         }
         $result = [];
         foreach ($items as $app => $modules) {
-            if (!in_array(Inflector::camelize($app), (array)$applications)) {
+            if (!in_array(Inflector::camelize($app), (array) $applications)) {
                 continue;
             }
             foreach ($modules as $name => $item) {
@@ -557,6 +567,7 @@ class RbacController extends Controller
                 }
             }
         }
+
         return $result;
     }
 
@@ -568,6 +579,7 @@ class RbacController extends Controller
                 $result[] = Inflector::camelize(ArrayHelper::getValue($config, 'id'));
             }
         }
+
         return array_filter($result, function ($item) use ($pattern) {
             return StringHelper::matchWildcard($pattern, $item);
         });

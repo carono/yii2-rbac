@@ -2,7 +2,6 @@
 
 namespace carono\yii2rbac;
 
-
 use yii\base\Action;
 use yii\db\ActiveRecord;
 use yii\helpers\ArrayHelper;
@@ -14,9 +13,7 @@ use yii\web\Controller;
 use yii\web\Request;
 
 /**
- * Class RoleManager
- *
- * @package carono\yii2rbac
+ * Class RoleManager.
  */
 class RoleManager
 {
@@ -25,8 +22,9 @@ class RoleManager
     public static $authManager = 'authManager';
 
     /**
-     * @return \yii\rbac\ManagerInterface
      * @throws \Exception
+     *
+     * @return \yii\rbac\ManagerInterface
      */
     public static function auth()
     {
@@ -40,8 +38,9 @@ class RoleManager
     /**
      * @param null $user
      *
-     * @return int|mixed|null|string
      * @throws \Exception
+     *
+     * @return int|mixed|null|string
      */
     private static function getUserId($user = null)
     {
@@ -54,8 +53,10 @@ class RoleManager
             $id = CurrentUser::getId();
         } elseif (is_string($user)) {
             $class = static::$identityClass ? static::$identityClass : \Yii::$app->user->identityClass;
+
             return static::getUserId($class::findByUsername($user));
         }
+
         return $id;
     }
 
@@ -63,8 +64,9 @@ class RoleManager
      * @param null $user
      * @param bool $namesOnly
      *
-     * @return array|\yii\rbac\Role[]
      * @throws \Exception
+     *
+     * @return array|\yii\rbac\Role[]
      */
     public static function getRoles($user = null, $namesOnly = true)
     {
@@ -81,14 +83,16 @@ class RoleManager
      * @param      $role
      * @param null $user
      *
-     * @return \yii\rbac\Assignment|false
      * @throws \Exception
+     *
+     * @return \yii\rbac\Assignment|false
      */
     public static function assign($role, $user = null)
     {
         $role = static::getRole($role);
         if (!static::haveRole($role, $user)) {
             $id = static::getUserId($user);
+
             return static::auth()->assign($role, $id);
         } else {
             return false;
@@ -111,8 +115,9 @@ class RoleManager
     }
 
     /**
-     * @param $roles
+     * @param      $roles
      * @param null $user
+     *
      * @return bool
      */
     public static function haveRoles($roles, $user = null)
@@ -121,8 +126,9 @@ class RoleManager
     }
 
     /**
-     * @param $roles
+     * @param      $roles
      * @param null $user
+     *
      * @return array
      */
     public static function haveOneOfRoles($roles, $user = null)
@@ -142,6 +148,7 @@ class RoleManager
             foreach ($attributes as $attribute => $value) {
                 $model->$attribute = $value;
             }
+
             return static::auth()->add($model);
         } else {
             return false;
@@ -150,6 +157,7 @@ class RoleManager
 
     /**
      * @param $permission
+     *
      * @return bool
      */
     public static function add($permission)
@@ -157,12 +165,14 @@ class RoleManager
         if (is_string($permission)) {
             $permission = self::getPermission($permission);
         }
+
         return static::auth()->add($permission);
     }
 
     /**
-     * @param $permission
+     * @param       $permission
      * @param array $params
+     *
      * @return bool
      */
     public static function updatePermissionParams($permission, $params = [])
@@ -175,6 +185,7 @@ class RoleManager
                 $permission->$param = $value;
             }
         }
+
         return self::auth()->update($permission->name, $permission);
     }
 
@@ -237,7 +248,7 @@ class RoleManager
     }
 
     /**
-     * @param      $action
+     * @param $action
      *
      * @return null|string
      */
@@ -250,16 +261,15 @@ class RoleManager
         }
         $controller = $action->controller->id;
         $name = Inflector::camelize($action->id);
+
         return static::formPermission($controller, $name, $module, $applicationId);
     }
-
 
     /**
      * @param        $controller
      * @param        $action
      * @param string $module
-     *
-     * @param null $application
+     * @param null   $application
      *
      * @return string
      */
@@ -268,8 +278,10 @@ class RoleManager
         if (!$application) {
             $application = \Yii::$app->id;
         }
+
         return join(
-            ":", array_filter(
+            ':',
+            array_filter(
                 [
                     Inflector::camelize($application),
                     Inflector::camelize($module),
@@ -281,9 +293,9 @@ class RoleManager
     }
 
     /**
-     * @param $name
-     *
+     * @param       $name
      * @param array $params
+     *
      * @return bool
      */
     public static function createPermission($name, $params = [])
@@ -291,6 +303,7 @@ class RoleManager
         if (!static::getPermission($name)) {
             $permission = static::auth()->createPermission($name);
             self::updatePermissionParams($permission, $params);
+
             return static::auth()->add($permission);
         }
 
@@ -301,14 +314,14 @@ class RoleManager
      * @param        $controller
      * @param        $action
      * @param string $module
-     *
-     * @param null $application
+     * @param null   $application
      *
      * @return bool
      */
     public static function createSitePermission($controller, $action, $module = 'Basic', $application = null)
     {
         $name = static::formPermission($controller, $action, $module, $application);
+
         return static::createPermission($name);
     }
 
@@ -388,6 +401,7 @@ class RoleManager
         if (!$permissionModel) {
             return false;
         }
+
         return static::auth()->hasChild($roleModel, $permissionModel);
     }
 
@@ -396,9 +410,9 @@ class RoleManager
         $url = Url::to($url, true);
         $arr = parse_url($url);
         $req = new Request();
-        $req->url = $arr["path"] . (isset($arr['query']) ? '?' . $arr['query'] : '');
+        $req->url = $arr['path'].(isset($arr['query']) ? '?'.$arr['query'] : '');
         if (isset($arr['query'])) {
-            parse_str($arr["query"], $query);
+            parse_str($arr['query'], $query);
         } else {
             $query = [];
         }
@@ -406,6 +420,7 @@ class RoleManager
         if (empty($result[1]) && $query) {
             $result[1] = $query;
         }
+
         return $result;
     }
 
@@ -435,14 +450,15 @@ class RoleManager
             return false;
         }
         $permission = static::urlToPermission($url);
+
         return static::checkAccess($permission, $user, $arr[1]);
     }
 
     /**
      * @param string|Action $permission
-     * @param null $user
+     * @param null          $user
+     * @param array         $params
      *
-     * @param array $params
      * @return bool
      */
     public static function checkAccess($permission, $user = null, $params = [])
@@ -461,8 +477,9 @@ class RoleManager
      * @param      $role
      * @param null $user
      *
-     * @return bool
      * @throws \Exception
+     *
+     * @return bool
      */
     public static function revoke($role, $user = null)
     {
@@ -478,8 +495,9 @@ class RoleManager
     /**
      * @param null $user
      *
-     * @return bool
      * @throws \Exception
+     *
+     * @return bool
      */
     public static function revokeAll($user = null)
     {

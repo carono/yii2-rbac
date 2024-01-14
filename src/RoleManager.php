@@ -22,9 +22,9 @@ class RoleManager
     public static $authManager = 'authManager';
 
     /**
+     * @return \yii\rbac\ManagerInterface
      * @throws \Exception
      *
-     * @return \yii\rbac\ManagerInterface
      */
     public static function auth()
     {
@@ -38,9 +38,9 @@ class RoleManager
     /**
      * @param null $user
      *
+     * @return int|mixed|null|string
      * @throws \Exception
      *
-     * @return int|mixed|null|string
      */
     private static function getUserId($user = null)
     {
@@ -64,9 +64,9 @@ class RoleManager
      * @param null $user
      * @param bool $namesOnly
      *
+     * @return array|\yii\rbac\Role[]
      * @throws \Exception
      *
-     * @return array|\yii\rbac\Role[]
      */
     public static function getRoles($user = null, $namesOnly = true)
     {
@@ -83,9 +83,9 @@ class RoleManager
      * @param      $role
      * @param null $user
      *
+     * @return \yii\rbac\Assignment|false
      * @throws \Exception
      *
-     * @return \yii\rbac\Assignment|false
      */
     public static function assign($role, $user = null)
     {
@@ -269,7 +269,7 @@ class RoleManager
      * @param        $controller
      * @param        $action
      * @param string $module
-     * @param null   $application
+     * @param null $application
      *
      * @return string
      */
@@ -314,7 +314,7 @@ class RoleManager
      * @param        $controller
      * @param        $action
      * @param string $module
-     * @param null   $application
+     * @param null $application
      *
      * @return bool
      */
@@ -410,13 +410,16 @@ class RoleManager
         $url = Url::to($url, true);
         $arr = parse_url($url);
         $req = new Request();
-        $req->url = $arr['path'].(isset($arr['query']) ? '?'.$arr['query'] : '');
+        $req->url = $arr['path'] . (isset($arr['query']) ? '?' . $arr['query'] : '');
         if (isset($arr['query'])) {
             parse_str($arr['query'], $query);
         } else {
             $query = [];
         }
         $result = \Yii::$app->urlManager->parseRequest($req);
+        if (!$result) {
+            return false;
+        }
         if (empty($result[1]) && $query) {
             $result[1] = $query;
         }
@@ -456,8 +459,8 @@ class RoleManager
 
     /**
      * @param string|Action $permission
-     * @param null          $user
-     * @param array         $params
+     * @param null $user
+     * @param array $params
      *
      * @return bool
      */
@@ -477,9 +480,9 @@ class RoleManager
      * @param      $role
      * @param null $user
      *
+     * @return bool
      * @throws \Exception
      *
-     * @return bool
      */
     public static function revoke($role, $user = null)
     {
@@ -495,9 +498,9 @@ class RoleManager
     /**
      * @param null $user
      *
+     * @return bool
      * @throws \Exception
      *
-     * @return bool
      */
     public static function revokeAll($user = null)
     {

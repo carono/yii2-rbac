@@ -408,7 +408,9 @@ class RoleManager
     public static function urlToRoute($url)
     {
         $url = Url::to($url, true);
-        $arr = parse_url($url);
+        if (!$arr = parse_url($url)) {
+            return false;
+        }
         $req = new Request();
         $req->url = $arr['path'] . (isset($arr['query']) ? '?' . $arr['query'] : '');
         if (isset($arr['query'])) {

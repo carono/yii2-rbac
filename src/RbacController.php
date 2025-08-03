@@ -50,7 +50,7 @@ class RbacController extends Controller
     {
         return ArrayHelper::getValue(
             [
-                'role-add'    => ['user', 'role'],
+                'role-add' => ['user', 'role'],
                 'role-revoke' => ['user', 'role'],
             ],
             $actionID,
@@ -101,7 +101,7 @@ class RbacController extends Controller
                 Console::output("Fail revoke role $this->role from $this->user");
             }
         }
-        Console::output('Current roles: '.join('; ', RoleManager::getRoles($user)));
+        Console::output('Current roles: ' . join('; ', RoleManager::getRoles($user)));
     }
 
     public function actionRoleShow()
@@ -109,7 +109,7 @@ class RbacController extends Controller
         if (!$user = CurrentUser::findUser($this->user)) {
             return Console::output("User $this->user not found");
         }
-        Console::output('Current roles: '.join('; ', RoleManager::getRoles($user)));
+        Console::output('Current roles: ' . join('; ', RoleManager::getRoles($user)));
     }
 
     public function actionRoleAdd()
@@ -169,9 +169,9 @@ class RbacController extends Controller
             if ($this->recreateRoles || !RoleManager::getRole($role)) {
                 if (is_string($data)) {
                     $data = [];
-                    $parents = (array) $data;
+                    $parents = (array)$data;
                 } else {
-                    $parents = (array) ArrayHelper::remove($data, 'parent');
+                    $parents = (array)ArrayHelper::remove($data, 'parent');
                 }
                 RoleManager::createRole($role, $data);
                 RoleManager::removeChildren($role);
@@ -202,24 +202,24 @@ class RbacController extends Controller
             exit;
         }
         foreach ($this->normalizePermissions($permissions) as $name => $roles1) {
-			RoleManager::createPermission($name);
-			$permissionModel = RoleManager::getPermission($name);
-			$this->removePermissionAssignment($permissionModel);
+            RoleManager::createPermission($name);
+            $permissionModel = RoleManager::getPermission($name);
+            $this->removePermissionAssignment($permissionModel);
 
-			foreach ($roles1 as $key => $role) {
-				if (is_array($role) && \in_array($key, ['data', 'description'])) {
-					$params[$key] = $role;
-					RoleManager::updatePermissionParams($permissionModel, $params);
-					continue;
-				}
-				if (!RoleManager::getRole($role)) {
-					Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
-					exit;
-				}
-				RoleManager::addChild($role, $name);
-			}
-			Console::output("Set '$name' for '".implode(', ', $roles1)."'");
-		}
+            foreach ($roles1 as $key => $role) {
+                if (is_array($role) && \in_array($key, ['data', 'description'])) {
+                    $params[$key] = $role;
+                    RoleManager::updatePermissionParams($permissionModel, $params);
+                    continue;
+                }
+                if (!RoleManager::getRole($role)) {
+                    Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
+                    exit;
+                }
+                RoleManager::addChild($role, $name);
+            }
+            Console::output("Set '$name' for '" . implode(', ', $roles1) . "'");
+        }
 
         foreach ($this->permissionsByRole as $role => $permissions) {
             foreach ($permissions as $key => $permission) {
@@ -359,7 +359,7 @@ class RbacController extends Controller
         try {
             \Yii::$app->{$this->cache}->flush();
         } catch (\Exception $e) {
-            echo 'Fail clear cache: '.$e->getMessage();
+            echo 'Fail clear cache: ' . $e->getMessage();
         }
     }
 
@@ -377,7 +377,7 @@ class RbacController extends Controller
         }
         return $result;
     }
-	
+
     public function normalizePermission($expressionPermission)
     {
         if (strpos($expressionPermission, '*') !== false) {
@@ -390,7 +390,7 @@ class RbacController extends Controller
 
             $permissions = [];
             if (!$applications) {
-                Console::output('ERROR: Applications not found in expression: '.$appPattern);
+                Console::output('ERROR: Applications not found in expression: ' . $appPattern);
                 exit;
             }
 
@@ -443,7 +443,7 @@ class RbacController extends Controller
                         $actions[] = new InlineAction($name, $controller, $value);
                     }
                 }
-            } elseif (method_exists($controller, $method = 'action'.$id)) {
+            } elseif (method_exists($controller, $method = 'action' . $id)) {
                 $actions[] = new InlineAction($id, $controller, $method);
             }
         }
@@ -483,7 +483,7 @@ class RbacController extends Controller
         $controllers = [];
         foreach ($this->getConfigs() as $configs) {
             $config = static::mergeConfigs($configs);
-            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), (array) $applications)) {
+            if (in_array(Inflector::camelize(ArrayHelper::getValue($config, 'id')), (array)$applications)) {
                 $p = str_replace('\\', '/', ArrayHelper::getValue($config, 'controllerNamespace', 'app\controllers'));
                 $names = array_filter(array_map($f, glob(\Yii::getAlias("@{$p}/*Controller.php"))), $f2);
                 foreach ($names as $elem) {
@@ -514,8 +514,8 @@ class RbacController extends Controller
             return [];
         }
         $moduleModel = \Yii::createObject(current($moduleConfig), [key($moduleConfig), null]);
-        $alias = '@'.str_replace('\\', '/', $moduleModel->controllerNamespace);
-        $names = array_filter(array_map($f, glob(\Yii::getAlias($alias.'/*Controller.php'))), $f2);
+        $alias = '@' . str_replace('\\', '/', $moduleModel->controllerNamespace);
+        $names = array_filter(array_map($f, glob(\Yii::getAlias($alias . '/*Controller.php'))), $f2);
         foreach ($names as $elem) {
             $name = key($elem);
             $file = current($elem);
@@ -539,7 +539,7 @@ class RbacController extends Controller
                 $namespace = $m[1];
             }
 
-            return $namespace.'\\'.$class;
+            return $namespace . '\\' . $class;
         }
 
         return false;
@@ -563,12 +563,12 @@ class RbacController extends Controller
     public function collectModules($pattern = '*', $applications = [])
     {
         $items = [];
-        foreach ((array) $applications as $app) {
+        foreach ((array)$applications as $app) {
             $items[$app] = array_merge($this->extractModulesById($app));
         }
         $result = [];
         foreach ($items as $app => $modules) {
-            if (!in_array(Inflector::camelize($app), (array) $applications)) {
+            if (!in_array(Inflector::camelize($app), (array)$applications)) {
                 continue;
             }
             foreach ($modules as $name => $item) {

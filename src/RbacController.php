@@ -201,27 +201,25 @@ class RbacController extends Controller
             Console::output('Permissions not registered, nothing to do');
             exit;
         }
-        foreach ($permissions as $permission => $roles1) {
-            foreach ($this->normalizePermission($permission) as $name) {
-                RoleManager::createPermission($name);
-                $permissionModel = RoleManager::getPermission($name);
-                $this->removePermissionAssignment($permissionModel);
+        foreach ($this->normalizePermissions($permissions) as $name => $roles1) {
+			RoleManager::createPermission($name);
+			$permissionModel = RoleManager::getPermission($name);
+			$this->removePermissionAssignment($permissionModel);
 
-                foreach ($roles1 as $key => $role) {
-                    if (is_array($role) && \in_array($key, ['data', 'description'])) {
-                        $params[$key] = $role;
-                        RoleManager::updatePermissionParams($permissionModel, $params);
-                        continue;
-                    }
-                    if (!RoleManager::getRole($role)) {
-                        Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
-                        exit;
-                    }
-                    RoleManager::addChild($role, $name);
-                }
-                Console::output("Set '$name' for '".implode(', ', $roles1)."'");
-            }
-        }
+			foreach ($roles1 as $key => $role) {
+				if (is_array($role) && \in_array($key, ['data', 'description'])) {
+					$params[$key] = $role;
+					RoleManager::updatePermissionParams($permissionModel, $params);
+					continue;
+				}
+				if (!RoleManager::getRole($role)) {
+					Console::output("FAIL add '$name' permission for '$role'. Role '$role' not found");
+					exit;
+				}
+				RoleManager::addChild($role, $name);
+			}
+			Console::output("Set '$name' for '".implode(', ', $roles1)."'");
+		}
 
         foreach ($this->permissionsByRole as $role => $permissions) {
             foreach ($permissions as $key => $permission) {
@@ -365,6 +363,21 @@ class RbacController extends Controller
         }
     }
 
+    protected function normalizePermissions($permissions)
+    {
+        $result = [];
+        foreach ($permissions as $permission => $roles1) {
+            foreach ($this->normalizePermission($permission) as $name) {
+                if (!isset($result[$name])) {
+                    $result[$name] = $roles1;
+                } else {
+                    $result[$name] = array_unique(ArrayHelper::merge($result[$name], $roles1));
+                }
+            }
+        }
+        return $result;
+    }
+	
     public function normalizePermission($expressionPermission)
     {
         if (strpos($expressionPermission, '*') !== false) {

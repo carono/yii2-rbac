@@ -2,21 +2,36 @@
   "name": "carono/yii2-rbac",
   "description": "Yii2 RBAC extension",
   "type": "yii2-extension",
+  "keywords": [
+    "yii2",
+    "extension"
+  ],
   "license": "MIT",
   "authors": [
     {
-      "name": "Aleksandr Kasyanov",
-      "email": "info@carono.ru",
-      "homepage": "http://carono.ru"
+      "homepage": "https://carono.ru",
+      "name": "Alexander Kasyanov",
+      "email": "info@carono.ru"
     }
   ],
   "require": {
-    "yiisoft/yii2": "~2.0",
-    "carono/yii2-behaviors": "@stable"
+    "php": "^7.4 || 8.*",
+    "yiisoft/yii2": "^2.0"
   },
   "autoload": {
     "psr-4": {
       "carono\\yii2rbac\\": "src"
+    }
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ],
+  "config": {
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true
     }
   },
   "extra": {

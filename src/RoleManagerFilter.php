@@ -2,6 +2,7 @@
 
 namespace carono\yii2rbac;
 
+use Yii;
 use yii\filters\AccessControl;
 
 class RoleManagerFilter extends AccessControl
@@ -11,9 +12,9 @@ class RoleManagerFilter extends AccessControl
     public function init()
     {
         $rule = [
-            'allow'         => true,
+            'allow' => true,
             'matchCallback' => function ($rule, $action) {
-                return call_user_func([$this->roleManagerClass, 'checkAccess'], $action);
+                return call_user_func([$this->roleManagerClass, 'checkAccess'], $action, Yii::$app->user->id, Yii::$app->request->get());
             },
         ];
         $this->rules[] = \Yii::createObject(array_merge($this->ruleConfig, $rule));

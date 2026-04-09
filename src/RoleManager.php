@@ -3,6 +3,7 @@
 namespace carono\yii2rbac;
 
 use yii\base\Action;
+use yii\db\ActiveRecord;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Inflector;
 use yii\helpers\Url;

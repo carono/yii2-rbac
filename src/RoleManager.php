@@ -3,7 +3,6 @@
 namespace carono\yii2rbac;
 
 use yii\base\Action;
-use yii\db\ActiveRecord;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Inflector;
 use yii\helpers\Url;
@@ -163,7 +162,7 @@ class RoleManager
     public static function add($permission)
     {
         if (is_string($permission)) {
-            $permission = self::getPermission($permission);
+            $permission = static::getPermission($permission);
         }
 
         return static::auth()->add($permission);
@@ -178,7 +177,7 @@ class RoleManager
     public static function updatePermissionParams($permission, $params = [])
     {
         if (is_string($permission)) {
-            $permission = self::getPermission($permission);
+            $permission = static::getPermission($permission);
         }
         foreach ($params as $param => $value) {
             if ($permission->canSetProperty($param)) {
@@ -186,7 +185,7 @@ class RoleManager
             }
         }
 
-        return self::auth()->update($permission->name, $permission);
+        return static::auth()->update($permission->name, $permission);
     }
 
     /**
@@ -302,7 +301,11 @@ class RoleManager
     {
         if (!static::getPermission($name)) {
             $permission = static::auth()->createPermission($name);
-            self::updatePermissionParams($permission, $params);
+            foreach ($params as $param => $value) {
+                if ($permission->canSetProperty($param)) {
+                    $permission->$param = $value;
+                }
+            }
 
             return static::auth()->add($permission);
         }
@@ -360,7 +363,7 @@ class RoleManager
     {
         $role = static::getRole($role);
         $parent = static::getRole($parent);
-        if (!static::auth()->hasChild($role, $parent)) {
+        if (!static::hasChild($role, $parent)) {
             static::auth()->addChild($role, $parent);
         }
     }
@@ -435,7 +438,7 @@ class RoleManager
         if (!$route = static::urlToRoute($url)) {
             return false;
         }
-        $route = static::urlToRoute($url)[0];
+        $route = $route[0];
         $parts = \Yii::$app->createController($route);
         [$controller, $actionID] = $parts;
         if (!$controller) {
@@ -451,12 +454,12 @@ class RoleManager
 
     public static function checkAccessByUrl($url, $user = null)
     {
-        if (!$arr = static::urlToRoute($url)) {
+        if (!$route = static::urlToRoute($url)) {
             return false;
         }
         $permission = static::urlToPermission($url);
 
-        return static::checkAccess($permission, $user, $arr[1]);
+        return static::checkAccess($permission, $user, $route[1]);
     }
 
     /**

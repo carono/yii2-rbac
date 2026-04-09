@@ -12,8 +12,8 @@ new \yii\web\Application([
     'components' => [
         'db' => [
             'class' => \yii\db\Connection::class,
-            'dsn' => 'mysql:host=mariadb;dbname=yii2_rbac_test;charset=utf8mb4',
-            'username' => 'root',
+            'dsn' => getenv('TEST_DB_DSN') ?: 'mysql:host=127.0.0.1;dbname=yii2_rbac_test;charset=utf8mb4',
+            'username' => getenv('TEST_DB_USER') ?: 'root',
             'password' => getenv('TEST_DB_PASSWORD') ?: '',
         ],
         'authManager' => [

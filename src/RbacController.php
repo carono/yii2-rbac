@@ -168,8 +168,8 @@ class RbacController extends Controller
         foreach ($roles as $role => $data) {
             if ($this->recreateRoles || !RoleManager::getRole($role)) {
                 if (is_string($data)) {
+                    $parents = [$data];
                     $data = [];
-                    $parents = (array)$data;
                 } else {
                     $parents = (array)ArrayHelper::remove($data, 'parent');
                 }
@@ -358,7 +358,7 @@ class RbacController extends Controller
     {
         try {
             \Yii::$app->{$this->cache}->flush();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo 'Fail clear cache: ' . $e->getMessage();
         }
     }

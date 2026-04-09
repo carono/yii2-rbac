@@ -43,20 +43,25 @@ class RoleManager
      */
     private static function getUserId($user = null)
     {
-        $id = null;
+        if ($user instanceof \yii\web\IdentityInterface) {
+            return $user->getId();
+        }
         if ($user instanceof ActiveRecord) {
-            $id = $user->getPrimaryKey();
-        } elseif (is_numeric($user)) {
-            $id = $user;
-        } elseif (is_null($user)) {
-            $id = CurrentUser::getId();
-        } elseif (is_string($user)) {
+            return $user->getPrimaryKey();
+        }
+        if (is_numeric($user)) {
+            return $user;
+        }
+        if (is_null($user)) {
+            return CurrentUser::getId();
+        }
+        if (is_string($user)) {
             $class = static::$identityClass ? static::$identityClass : \Yii::$app->user->identityClass;
 
             return static::getUserId($class::findByUsername($user));
         }
 
-        return $id;
+        return null;
     }
 
     /**
@@ -144,7 +149,7 @@ class RoleManager
     {
         if (!static::getRole($role)) {
             $model = static::auth()->createRole($role);
-            foreach ($attributes as $attribute => $value) {
+            foreach ((array)$attributes as $attribute => $value) {
                 $model->$attribute = $value;
             }
 
@@ -363,7 +368,7 @@ class RoleManager
     {
         $role = static::getRole($role);
         $parent = static::getRole($parent);
-        if (!static::hasChild($role, $parent)) {
+        if (!static::auth()->hasChild($role, $parent)) {
             static::auth()->addChild($role, $parent);
         }
     }

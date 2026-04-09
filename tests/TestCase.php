@@ -14,5 +14,8 @@ abstract class TestCase extends BaseTestCase
         \Yii::$app->user->setIdentity(null);
         FakeUser::clear();
         unset(\Yii::$app->params['robot']);
+        \carono\yii2rbac\RoleManager::$defaultApplicationId = null;
+        \carono\yii2rbac\RoleManager::$identityClass = null;
+        \carono\yii2rbac\CurrentUser::$identityClass = null;
     }
 }

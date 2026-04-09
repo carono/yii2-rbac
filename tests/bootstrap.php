@@ -74,6 +74,9 @@ $db->createCommand('CREATE TABLE auth_item_child (
         REFERENCES auth_item (name) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4')->execute();
 
+// Алиас для разрешения пути к тестовым контроллерам через Yii::getAlias()
+\Yii::setAlias('@carono/yii2rbac/tests', __DIR__);
+
 $db->createCommand('CREATE TABLE auth_assignment (
     item_name VARCHAR(64) NOT NULL,
     user_id VARCHAR(64) NOT NULL,

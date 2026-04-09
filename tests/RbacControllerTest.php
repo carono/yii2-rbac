@@ -344,4 +344,107 @@ class RbacControllerTest extends TestCase
     {
         $this->assertFalse(RbacController::extractClassByPath('/nonexistent/file.php'));
     }
+
+    // -----------------------------------------------------------------
+    // Загрузка RBAC-конфига из console.php
+    // -----------------------------------------------------------------
+
+    /** Создаёт контроллер с consoleConfig и запускает actionIndex(). */
+    private function makeConsoleConfigController(): TestableRbacController
+    {
+        $consoleConfig = __DIR__ . '/app/config/console.php';
+        $cmd = new TestableRbacController('rbac', \Yii::$app);
+        $cmd->consoleConfig = $consoleConfig;
+        $cmd->removeUnusedRoles = false;
+        return $cmd;
+    }
+
+    private function runIndexOn(TestableRbacController $cmd): void
+    {
+        ob_start();
+        $cmd->actionIndex();
+        ob_end_clean();
+    }
+
+    public function testConsoleConfigLoadsRoles(): void
+    {
+        $cmd = $this->makeConsoleConfigController();
+        $this->runIndexOn($cmd);
+
+        $this->assertNotNull(RoleManager::getRole('guest'));
+        $this->assertNotNull(RoleManager::getRole('user'));
+        $this->assertNotNull(RoleManager::getRole('manager'));
+    }
+
+    public function testConsoleConfigManagerInheritsUser(): void
+    {
+        $cmd = $this->makeConsoleConfigController();
+        $this->runIndexOn($cmd);
+
+        $manager = RoleManager::getRole('manager');
+        $user    = RoleManager::getRole('user');
+        $this->assertTrue(RoleManager::auth()->hasChild($manager, $user));
+    }
+
+    public function testConsoleConfigLoadsPermissions(): void
+    {
+        $cmd = $this->makeConsoleConfigController();
+        $this->runIndexOn($cmd);
+
+        $this->assertNotNull(RoleManager::getPermission('Basic:Site:Index'));
+        $this->assertNotNull(RoleManager::getPermission('Basic:Site:Login'));
+        $this->assertNotNull(RoleManager::getPermission('Basic:Site:Error'));
+    }
+
+    public function testConsoleConfigAssignsPermissionsToRoles(): void
+    {
+        $cmd = $this->makeConsoleConfigController();
+        $this->runIndexOn($cmd);
+
+        // Гость видит Index
+        $this->assertTrue(RoleManager::hasChild('guest', 'Basic:Site:Index'));
+        // Только гость — Login
+        $this->assertTrue(RoleManager::hasChild('guest', 'Basic:Site:Login'));
+        // Пользователь — Index
+        $this->assertTrue(RoleManager::hasChild('user', 'Basic:Site:Index'));
+    }
+
+    public function testConsoleConfigExpandsWildcardPermissions(): void
+    {
+        $cmd = $this->makeConsoleConfigController();
+        $this->runIndexOn($cmd);
+
+        // Basic:Profile:* должен раскрыться в Index и Edit
+        $this->assertNotNull(RoleManager::getPermission('Basic:Profile:Index'));
+        $this->assertNotNull(RoleManager::getPermission('Basic:Profile:Edit'));
+        $this->assertTrue(RoleManager::hasChild('user', 'Basic:Profile:Index'));
+        $this->assertTrue(RoleManager::hasChild('user', 'Basic:Profile:Edit'));
+    }
+
+    public function testConsoleConfigPropertyOverridesFileConfig(): void
+    {
+        // Роли из файла: guest, user, manager.
+        // Добавляем роль root прямо на объекте — она должна ДОБАВИТЬСЯ.
+        $cmd = $this->makeConsoleConfigController();
+        $cmd->roles = ['root' => null];
+
+        $this->runIndexOn($cmd);
+
+        // Роль из файла и роль из свойства — обе должны быть созданы.
+        $this->assertNotNull(RoleManager::getRole('guest'));
+        $this->assertNotNull(RoleManager::getRole('root'));
+    }
+
+    public function testConsoleConfigNonExistentFileIsIgnored(): void
+    {
+        $cmd = new TestableRbacController('rbac', \Yii::$app);
+        $cmd->consoleConfig = '/nonexistent/console.php';
+        $cmd->roles = ['guest' => null];
+        $cmd->permissions = ['Basic:Site:Index' => ['guest']];
+        $cmd->removeUnusedRoles = false;
+
+        // Несуществующий файл не должен вызывать ошибку
+        $this->runIndexOn($cmd);
+        $this->assertNotNull(RoleManager::getRole('guest'));
+    }
 }

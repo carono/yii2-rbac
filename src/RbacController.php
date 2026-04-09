@@ -43,6 +43,13 @@ class RbacController extends Controller
         ],
     ];
     public $configs = [];
+    /**
+     * Path to console config file (e.g. '@app/config/console.php').
+     * If set, roles/permissions/permissionsByRole/rules/deny are merged from
+     * controllerMap.rbac section of that file. Direct property assignments
+     * take precedence over values from the config file.
+     */
+    public $consoleConfig;
     protected $role;
     protected $user;
 
@@ -71,6 +78,39 @@ class RbacController extends Controller
     {
         RoleManager::$authManager = $this->authManager;
         parent::init();
+    }
+
+    /**
+     * Merges roles/permissions/permissionsByRole/rules/deny from the console
+     * config file (controllerMap.rbac section). Values already set as
+     * properties on this controller take precedence.
+     */
+    protected function loadConsoleConfig(): void
+    {
+        if (!$this->consoleConfig) {
+            return;
+        }
+        try {
+            $file = \Yii::getAlias($this->consoleConfig);
+        } catch (\Exception $e) {
+            return;
+        }
+        if (!file_exists($file)) {
+            return;
+        }
+        $config = require $file;
+        $rbacConfig = ArrayHelper::getValue($config, 'controllerMap.rbac', []);
+
+        foreach (['roles', 'permissions', 'permissionsByRole', 'rules', 'deny'] as $prop) {
+            if (isset($rbacConfig[$prop])) {
+                // Property values set explicitly on controller take precedence
+                $this->$prop = ArrayHelper::merge((array)$rbacConfig[$prop], (array)$this->$prop);
+            }
+        }
+
+        if (!$this->configs && !empty($rbacConfig['configs'])) {
+            $this->configs = $rbacConfig['configs'];
+        }
     }
 
     public function manageRole($assign)
@@ -296,6 +336,7 @@ class RbacController extends Controller
 
     public function actionIndex()
     {
+        $this->loadConsoleConfig();
         $transaction = \Yii::$app->db->beginTransaction();
         Console::output('Creating roles');
         $this->applyRoles();

@@ -3,179 +3,81 @@
 namespace carono\yii2rbac;
 
 use yii\base\Exception;
-use yii\base\Model;
 use yii\helpers\ArrayHelper;
-use yii\helpers\Html;
 
 class CurrentUser
 {
+
     public static $identityClass;
 
     /**
-     * @param Model|string $message
+     * @return string|\yii\web\IdentityInterface
+     * @throws Exception
      */
-    public static function setFlashError($message)
+    private static function resolveIdentityClass(): string
     {
-        if ($message instanceof Model) {
-            $message = Html::errorSummary($message);
+        $class = self::$identityClass ?? \Yii::$app->user->identityClass;
+        if (!class_exists($class)) {
+            throw new Exception("Identity class '$class' not found");
         }
-        self::setFlash('error', $message);
-    }
-
-    /**
-     * @param $message
-     */
-    public static function setFlashSuccess($message)
-    {
-        self::setFlash('success', $message);
-    }
-
-    /**
-     * @param $message
-     */
-    public static function setFlashWarning($message)
-    {
-        self::setFlash('warning', $message);
-    }
-
-    /**
-     * @param $message
-     */
-    public static function setFlashInfo($message)
-    {
-        self::setFlash('info', $message);
-    }
-
-    /**
-     * @param null $key
-     *
-     * @return string
-     */
-    public static function showFlash($key = null)
-    {
-        $session = \Yii::$app->getSession();
-        if (!$key) {
-            $out = '';
-            foreach ($session->getAllFlashes(false) as $key => $value) {
-                $out .= self::showFlash($key);
-            }
-
-            return $out;
-        } else {
-            switch ($key) {
-                case 'success':
-                    $htmlOptions = ['class' => 'alert alert-success'];
-                    break;
-                case 'error':
-                    $htmlOptions = ['class' => 'alert alert-danger'];
-                    break;
-                case 'info':
-                    $htmlOptions = ['class' => 'alert alert-info'];
-                    break;
-                case 'warning':
-                    $htmlOptions = ['class' => 'alert alert-warning'];
-                    break;
-                default:
-                    $htmlOptions = ['class' => 'alert alert-info'];
-            }
-            if ($session->hasFlash($key)) {
-                return Html::tag('div', $session->getFlash($key), $htmlOptions);
-            }
+        if (!isset(class_implements($class)['yii\web\IdentityInterface'])) {
+            throw new Exception("$class must implement yii\\web\\IdentityInterface");
         }
 
-        return '';
+        return $class;
     }
 
     /**
-     * @param $name
-     * @param $message
+     * @throws Exception
      */
-    public static function setFlash($name, $message)
-    {
-        if (\Yii::$app->getSession()) {
-            \Yii::$app->getSession()->setFlash($name, $message);
-        }
-    }
-
-    /**
-     * @param null $user
-     *
-     * @return bool
-     */
-    public static function isMe($user = null)
-    {
-        return self::user($user)->id == self::getId(true);
-    }
-
-    /**
-     * @param      $user
-     * @param bool $asRobot
-     *
-     * @return User
-     */
-    public static function user($user, $asRobot = true)
-    {
-        if ($model = self::findUser($user)) {
-            return $model;
-        } else {
-            return self::get($asRobot);
-        }
-    }
-
     public static function findUser($user)
     {
-        $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
-        if (class_exists($class)) {
-            if (!isset(class_implements($class)['yii\web\IdentityInterface'])) {
-                throw new Exception("$class must be implemented from yii\\web\\IdentityInterface");
-            }
-        }
-        $model = null;
+        $class = self::resolveIdentityClass();
         if (is_numeric($user)) {
-            $model = $class::findIdentity($user);
-        } elseif (is_string($user)) {
-            $model = $class::findByUsername($user);
-        } elseif ($user instanceof $class) {
-            $model = $user;
+            return $class::findIdentity($user);
+        }
+        if (is_string($user)) {
+            if (!method_exists($class, 'findByUsername')) {
+                throw new Exception("$class does not implement findByUsername()");
+            }
+
+            return $class::findByUsername($user);
+        }
+        if ($user instanceof $class) {
+            return $user;
         }
 
-        return $model;
+        return null;
     }
 
     public static function getRobot($login = null)
     {
-        $user = null;
-        $login = $login ? $login : (isset(\Yii::$app->params['robot']) ? \Yii::$app->params['robot'] : null);
-        $user = self::findUser($login);
+        $login = $login ?? (\Yii::$app->params['robot'] ?? null);
 
-        return $user;
+        return $login ? self::findUser($login) : null;
     }
 
     /**
      * @return \yii\web\User
      */
-    public static function webUser()
+    public static function webUser(): \yii\web\User
     {
         return \Yii::$app->user;
     }
 
-    public static function isGuest()
+    public static function isGuest(): bool
     {
         return \Yii::$app->user->getIsGuest();
     }
 
     /**
-     * @param bool $asRobot
-     * @param null $robot
-     *
-     * @return User|null
+     * @throws Exception
      */
     public static function get($asRobot = false, $robot = null)
     {
-        $class = self::$identityClass ? self::$identityClass : \Yii::$app->user->identityClass;
         $user = null;
         if (isset(\Yii::$app->components['user']) && !self::isGuest()) {
-            $user = $class::findIdentity(\Yii::$app->user->identity->getId());
+            $user = \Yii::$app->user->identity;
         }
         if ($asRobot && !$user) {
             $user = self::getRobot($robot);
@@ -184,8 +86,32 @@ class CurrentUser
         return $user;
     }
 
+    /**
+     * @throws Exception
+     */
     public static function getId($asRobot = false, $robot = null)
     {
         return ArrayHelper::getValue(self::get($asRobot, $robot), 'id');
     }
+
+    /**
+     * @throws Exception
+     */
+    public static function isMe($user = null): bool
+    {
+        $model = self::user($user);
+
+        return $model !== null && $model->id == self::getId(true);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public static function user($user, $asRobot = true)
+    {
+        $model = $user !== null ? self::findUser($user) : null;
+
+        return $model ?? self::get($asRobot);
+    }
+
 }

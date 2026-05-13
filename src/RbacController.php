@@ -210,6 +210,9 @@ class RbacController extends Controller
                 if (is_string($data)) {
                     $parents = [$data];
                     $data = [];
+                } elseif (is_array($data) && $data !== [] && ArrayHelper::isIndexed($data, true)) {
+                    $parents = $data;
+                    $data = [];
                 } else {
                     $parents = (array)ArrayHelper::remove($data, 'parent');
                 }

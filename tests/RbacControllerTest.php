@@ -111,6 +111,43 @@ class RbacControllerTest extends TestCase
         $this->assertEquals('Директор', $director->description);
     }
 
+    public function testActionIndexRoleHierarchyViaIndexedArrayParents(): void
+    {
+        // 'role' => ['parent_a', 'parent_b'] — каждый элемент строкового списка трактуется как родитель
+        $this->cmd->roles = [
+            'user'    => null,
+            'support' => 'user',
+            'balance' => ['support'],
+        ];
+        $this->cmd->permissions = ['Basic:Site:Index' => ['user']];
+
+        $this->runIndex();
+
+        $balance = RoleManager::getRole('balance');
+        $support = RoleManager::getRole('support');
+        $this->assertNotNull($balance);
+        $this->assertTrue(RoleManager::auth()->hasChild($balance, $support));
+    }
+
+    public function testActionIndexRoleHierarchyViaIndexedArrayMultipleParents(): void
+    {
+        $this->cmd->roles = [
+            'user'    => null,
+            'support' => 'user',
+            'admin'   => 'user',
+            'super'   => ['support', 'admin'],
+        ];
+        $this->cmd->permissions = ['Basic:Site:Index' => ['user']];
+
+        $this->runIndex();
+
+        $super   = RoleManager::getRole('super');
+        $support = RoleManager::getRole('support');
+        $admin   = RoleManager::getRole('admin');
+        $this->assertTrue(RoleManager::auth()->hasChild($super, $support));
+        $this->assertTrue(RoleManager::auth()->hasChild($super, $admin));
+    }
+
     public function testRecreateRolesUpdatesHierarchy(): void
     {
         // recreateRoles пересоздаёт связи (детей), но не свойства роли.
